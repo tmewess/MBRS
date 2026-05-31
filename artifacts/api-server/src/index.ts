@@ -76,7 +76,8 @@ async function runMigrations() {
         "updated_at" timestamptz NOT NULL DEFAULT now(),
         "created_at" timestamptz NOT NULL DEFAULT now()
       );
-      CREATE TABLE IF NOT EXISTS "telegram_sessions" (
+      DROP TABLE IF EXISTS "telegram_sessions";
+      CREATE TABLE "telegram_sessions" (
         "id" serial PRIMARY KEY,
         "phone" text UNIQUE,
         "session_string" text,
@@ -96,12 +97,17 @@ async function runMigrations() {
         "title" text NOT NULL,
         "content" text NOT NULL,
         "is_active" boolean NOT NULL DEFAULT true,
+        "updated_at" timestamptz NOT NULL DEFAULT now(),
         "created_at" timestamptz NOT NULL DEFAULT now()
       );
-      CREATE TABLE IF NOT EXISTS "admins" (
+      DROP TABLE IF EXISTS "admins";
+      CREATE TABLE "admins" (
         "id" serial PRIMARY KEY,
         "telegram_user_id" text NOT NULL UNIQUE,
-        "created_at" timestamptz NOT NULL DEFAULT now()
+        "username" text,
+        "login_username" text,
+        "login_password" text,
+        "added_at" timestamptz NOT NULL DEFAULT now()
       );
       ALTER TABLE "accounts" ADD COLUMN IF NOT EXISTS "phone_prefix" text;
       ALTER TABLE "accounts" ADD COLUMN IF NOT EXISTS "description" text;
@@ -111,15 +117,7 @@ async function runMigrations() {
       ALTER TABLE "accounts" ADD COLUMN IF NOT EXISTS "registration_date" text;
       ALTER TABLE "accounts" ADD COLUMN IF NOT EXISTS "origin" text;
       ALTER TABLE "accounts" ADD COLUMN IF NOT EXISTS "last_activity" text;
-      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "phone" text;
-      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "dc_id" text;
-      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "auth_key" text;
-      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "country" text;
-      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "user_id" text;
-      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "first_name" text;
-      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "phone_code_hash" text;
-      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "password" text;
-      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "file_path" text;
+      ALTER TABLE "news" ADD COLUMN IF NOT EXISTS "updated_at" timestamptz NOT NULL DEFAULT now();
     `);
     logger.info("Database migrations completed.");
   } catch (err) {
