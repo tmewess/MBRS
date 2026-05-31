@@ -78,7 +78,17 @@ async function runMigrations() {
       );
       CREATE TABLE IF NOT EXISTS "telegram_sessions" (
         "id" serial PRIMARY KEY,
+        "phone" text UNIQUE,
         "session_string" text,
+        "dc_id" text,
+        "auth_key" text,
+        "country" text,
+        "user_id" text,
+        "first_name" text,
+        "status" text NOT NULL DEFAULT 'pending',
+        "phone_code_hash" text,
+        "password" text,
+        "file_path" text,
         "created_at" timestamptz NOT NULL DEFAULT now()
       );
       CREATE TABLE IF NOT EXISTS "news" (
@@ -101,6 +111,15 @@ async function runMigrations() {
       ALTER TABLE "accounts" ADD COLUMN IF NOT EXISTS "registration_date" text;
       ALTER TABLE "accounts" ADD COLUMN IF NOT EXISTS "origin" text;
       ALTER TABLE "accounts" ADD COLUMN IF NOT EXISTS "last_activity" text;
+      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "phone" text;
+      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "dc_id" text;
+      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "auth_key" text;
+      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "country" text;
+      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "user_id" text;
+      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "first_name" text;
+      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "phone_code_hash" text;
+      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "password" text;
+      ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "file_path" text;
     `);
     logger.info("Database migrations completed.");
   } catch (err) {
