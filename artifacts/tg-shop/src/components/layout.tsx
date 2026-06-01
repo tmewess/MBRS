@@ -7,16 +7,14 @@ function useTheme() {
   const [isDark, setIsDark] = useState<boolean>(() => {
     const saved = localStorage.getItem("theme");
     if (saved) return saved === "dark";
-    return true; // default: dark
+    return true; // default: dark (black)
   });
 
   useEffect(() => {
     const root = document.documentElement;
     if (isDark) {
       root.classList.remove("light");
-      root.classList.add("dark");
     } else {
-      root.classList.remove("dark");
       root.classList.add("light");
     }
     localStorage.setItem("theme", isDark ? "dark" : "light");
