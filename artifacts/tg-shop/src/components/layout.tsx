@@ -122,7 +122,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-14 items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <img src={`${import.meta.env.BASE_URL}logo.png`.replace(/\/\/+/g, "/")} alt="VoidAccount" className="h-10 w-10 rounded-md neon-logo" />
+            <img
+              src={`${import.meta.env.BASE_URL}logo.png`.replace(/\/\/+/g, "/")}
+              alt="VoidAccount"
+              className="h-10 w-10 rounded-md neon-logo transition-all duration-300"
+              style={{ filter: isDark ? "none" : "invert(1)" }}
+            />
             <span className="font-semibold tracking-tight text-lg">VoidAccount</span>
           </div>
           <button
