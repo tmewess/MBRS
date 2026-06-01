@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import WebApp from "@twa-dev/sdk";
 import { isTelegramWebApp } from "@/lib/telegram";
+import logoSrc from "@/assets/logo.jpeg";
 
 function useTheme() {
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -123,7 +124,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="flex h-14 items-center justify-between px-4">
           <div className="flex items-center gap-3">
             <img
-              src={`${import.meta.env.BASE_URL}logo.png`.replace(/\/\/+/g, "/")}
+              src={logoSrc}
               alt="VoidAccount"
               className="h-10 w-10 rounded-md neon-logo transition-all duration-300"
               style={{ filter: isDark ? "none" : "invert(1)" }}
