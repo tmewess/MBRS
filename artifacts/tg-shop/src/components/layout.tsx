@@ -3,6 +3,28 @@ import { useEffect, useState } from "react";
 import WebApp from "@twa-dev/sdk";
 import { isTelegramWebApp } from "@/lib/telegram";
 
+function useTheme() {
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    const saved = localStorage.getItem("theme");
+    if (saved) return saved === "dark";
+    return true; // default: dark
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDark) {
+      root.classList.remove("light");
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+      root.classList.add("light");
+    }
+    localStorage.setItem("theme", isDark ? "dark" : "light");
+  }, [isDark]);
+
+  return { isDark, toggle: () => setIsDark((v) => !v) };
+}
+
 const navItems = [
   {
     href: "/",
@@ -53,6 +75,7 @@ const navItems = [
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [pressed, setPressed] = useState<string | null>(null);
+  const { isDark, toggle } = useTheme();
 
   useEffect(() => {
     if (isTelegramWebApp()) {
@@ -99,9 +122,43 @@ export function Layout({ children }: { children: React.ReactNode }) {
       `}</style>
 
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex h-14 items-center px-4 gap-3">
-          <img src={`${import.meta.env.BASE_URL}logo.png`.replace(/\/\/+/g, "/")} alt="VoidAccount" className="h-10 w-10 rounded-md neon-logo" />
-          <span className="font-semibold tracking-tight text-lg">VoidAccount</span>
+        <div className="flex h-14 items-center justify-between px-4">
+          <div className="flex items-center gap-3">
+            <img src={`${import.meta.env.BASE_URL}logo.png`.replace(/\/\/+/g, "/")} alt="VoidAccount" className="h-10 w-10 rounded-md neon-logo" />
+            <span className="font-semibold tracking-tight text-lg">VoidAccount</span>
+          </div>
+          <button
+            onClick={toggle}
+            aria-label="Переключить тему"
+            className="relative flex items-center w-12 h-6 rounded-full transition-colors duration-300 focus:outline-none"
+            style={{ background: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)" }}
+          >
+            <span
+              className="absolute flex items-center justify-center w-5 h-5 rounded-full shadow transition-all duration-300"
+              style={{
+                left: isDark ? "2px" : "calc(100% - 22px)",
+                background: isDark ? "#1e293b" : "#fff",
+              }}
+            >
+              {isDark ? (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5"/>
+                  <line x1="12" y1="1" x2="12" y2="3"/>
+                  <line x1="12" y1="21" x2="12" y2="23"/>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                  <line x1="1" y1="12" x2="3" y2="12"/>
+                  <line x1="21" y1="12" x2="23" y2="12"/>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+              )}
+            </span>
+          </button>
         </div>
       </header>
 
