@@ -118,6 +118,14 @@ async function runMigrations() {
       ALTER TABLE "accounts" ADD COLUMN IF NOT EXISTS "origin" text;
       ALTER TABLE "accounts" ADD COLUMN IF NOT EXISTS "last_activity" text;
       ALTER TABLE "news" ADD COLUMN IF NOT EXISTS "updated_at" timestamptz NOT NULL DEFAULT now();
+      CREATE TABLE IF NOT EXISTS "users" (
+        "telegram_user_id" text NOT NULL PRIMARY KEY,
+        "username" text,
+        "first_name" text,
+        "last_name" text,
+        "created_at" timestamptz NOT NULL DEFAULT now(),
+        "last_seen_at" timestamptz NOT NULL DEFAULT now()
+      );
     `);
     logger.info("Database migrations completed.");
   } catch (err) {
