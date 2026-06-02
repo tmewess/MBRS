@@ -41,10 +41,25 @@ const COUNTRY_FLAGS: Record<string, string> = {
   "Италия": "🇮🇹", "Турция": "🇹🇷", "Индия": "🇮🇳", "Китай": "🇨🇳",
   "Япония": "🇯🇵", "Бразилия": "🇧🇷", "Аргентина": "🇦🇷",
   "Соединенные Штаты": "🇺🇸", "United States": "🇺🇸",
+  "Индонезия": "🇮🇩", "Пакистан": "🇵🇰", "Бангладеш": "🇧🇩",
+  "Нигерия": "🇳🇬", "Великобритания": "🇬🇧", "Вьетнам": "🇻🇳",
+  "Таиланд": "🇹🇭", "Филиппины": "🇵🇭", "Иран": "🇮🇷",
+  "Узбекистан": "🇺🇿", "Азербайджан": "🇦🇿", "Армения": "🇦🇲",
+  "Грузия": "🇬🇪", "Кыргызстан": "🇰🇬", "Таджикистан": "🇹🇯",
+  "Молдова": "🇲🇩", "Литва": "🇱🇹", "Латвия": "🇱🇻",
+  "Эстония": "🇪🇪", "Нидерланды": "🇳🇱", "Испания": "🇪🇸",
+  "Португалия": "🇵🇹", "Греция": "🇬🇷", "Румыния": "🇷🇴",
+  "Болгария": "🇧🇬", "Сербия": "🇷🇸", "Венгрия": "🇭🇺",
+  "Чехия": "🇨🇿", "Словакия": "🇸🇰", "Австрия": "🇦🇹",
+  "Швейцария": "🇨🇭", "Швеция": "🇸🇪", "Норвегия": "🇳🇴",
+  "Финляндия": "🇫🇮", "Дания": "🇩🇰", "Канада": "🇨🇦",
+  "Мексика": "🇲🇽", "Австралия": "🇦🇺", "Южная Корея": "🇰🇷",
+  "Саудовская Аравия": "🇸🇦", "ОАЭ": "🇦🇪", "Египет": "🇪🇬",
+  "Другая": "🌍",
 };
 
 function getFlag(country: string): string {
-  return COUNTRY_FLAGS[country] || "";
+  return COUNTRY_FLAGS[country] || "🌍";
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
@@ -97,9 +112,9 @@ export default function AccountDetail() {
     const parts: string[] = [];
     if (acc.phone) parts.push(`Номер: ${acc.phone}`);
     if (acc.userId) parts.push(`ID: ${acc.userId}`);
-    if (acc.authKey) parts.push(`Auth Key: ${acc.authKey}`);
     if (acc.dcId) parts.push(`DC: ${acc.dcId}`);
     if (acc.hasPassword && acc.password) parts.push(`Пароль 2FA: ${acc.password}`);
+    if (acc.authKey) parts.push(`Auth Key: ${acc.authKey}`);
     navigator.clipboard.writeText(parts.join("\n"));
     toast({ title: "Скопировано", description: "Все данные аккаунта" });
   };
@@ -237,18 +252,7 @@ export default function AccountDetail() {
               </div>
             )}
 
-            {acc.authKey && (
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Auth Key:</label>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-muted/60 rounded-lg px-3 py-2.5 text-xs font-mono truncate">{acc.authKey.slice(0, 24)}...{acc.authKey.slice(-8)}</div>
-                  <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => handleCopy(acc.authKey!, "Auth Key")}>
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-
+            {/* DC moved to position of AuthKey (3rd) */}
             {acc.dcId && (
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">DC:</label>
@@ -273,10 +277,16 @@ export default function AccountDetail() {
               </div>
             )}
 
-            {acc.description && (
+            {/* AuthKey moved to bottom */}
+            {acc.authKey && (
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Описание:</label>
-                <div className="bg-muted/60 rounded-lg px-3 py-2.5 text-xs text-muted-foreground">{acc.description}</div>
+                <label className="text-xs text-muted-foreground">Auth Key:</label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 bg-muted/60 rounded-lg px-3 py-2.5 text-xs font-mono truncate">{acc.authKey.slice(0, 24)}...{acc.authKey.slice(-8)}</div>
+                  <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => handleCopy(acc.authKey!, "Auth Key")}>
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -354,11 +364,19 @@ export default function AccountDetail() {
     ? "Отсутствует"
     : account.spamBlock === "1" ? "Спам" : account.spamBlock;
 
-  const idDigitCount = account.userId ? account.userId.replace(/\D/g, "").length : null;
-
   return (
-    <Layout>
-      <div className="p-4 space-y-4 pb-24">
+    <div className="min-h-[100dvh] w-full flex flex-col bg-background text-foreground pb-24">
+      {/* Back header */}
+      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex h-14 items-center px-4 gap-3">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setLocation("/")}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <span className="font-semibold tracking-tight text-lg">Аккаунт</span>
+        </div>
+      </header>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <div className="flex items-center gap-3">
           <span className="text-2xl">{getFlag(account.country)}</span>
           <div>
@@ -418,7 +436,7 @@ export default function AccountDetail() {
         )}
       </div>
 
-      <div className="fixed bottom-[60px] left-0 right-0 p-4 bg-background/95 backdrop-blur border-t border-border/50 z-10">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur border-t border-border/50 z-10">
         <Button
           className="w-full h-12 text-base font-semibold"
           onClick={handleBuy}
@@ -433,6 +451,6 @@ export default function AccountDetail() {
                 : "Недоступен"}
         </Button>
       </div>
-    </Layout>
+    </div>
   );
 }

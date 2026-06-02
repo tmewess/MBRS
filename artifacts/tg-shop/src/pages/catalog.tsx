@@ -34,6 +34,8 @@ interface Account {
   lastActivity: string | null;
   registrationDate: string | null;
   description: string | null;
+  lolzItemId: string | null;
+  sessionId: number | null;
 }
 
 const COUNTRY_FLAGS: Record<string, string> = {
@@ -106,6 +108,13 @@ const COUNTRY_FLAGS: Record<string, string> = {
 
 function getFlag(country: string): string {
   return COUNTRY_FLAGS[country] || "🌍";
+}
+
+function getIdDigitLabel(userId: string | null): string | null {
+  if (!userId) return null;
+  const digits = userId.replace(/\D/g, "").length;
+  if (!digits) return null;
+  return `${digits}ID`;
 }
 
 function AccountSkeleton({ index }: { index: number }) {
@@ -253,6 +262,8 @@ export default function Catalog() {
           ) : (
             accounts.map((acc, i) => {
               const isFree = acc.isFree === "true" || acc.price === 0;
+              const hasAutoDelivery = !!(acc.lolzItemId || acc.sessionId);
+              const idLabel = getIdDigitLabel(acc.userId);
               return (
                 <Link key={acc.id} href={`/account/${acc.id}`} className="block">
                   <div
@@ -281,16 +292,25 @@ export default function Catalog() {
                           {getFlag(acc.country)}
                         </div>
                         <div className="min-w-0 space-y-1">
+                          {/* Description on top */}
+                          {acc.description ? (
+                            <p className="text-sm font-semibold truncate">{acc.description}</p>
+                          ) : (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-semibold text-sm truncate">{acc.country || "Неизвестно"}</span>
+                              {acc.hasPremium && (
+                                <span className="badge-premium flex-shrink-0">Premium</span>
+                              )}
+                              {isFree && (
+                                <span className="badge-free flex-shrink-0">Free</span>
+                              )}
+                            </div>
+                          )}
+                          {/* Country + DC + ID + авто-выдача below */}
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-semibold text-sm truncate">{acc.country || "Неизвестно"}</span>
-                            {acc.hasPremium && (
-                              <span className="badge-premium flex-shrink-0">Premium</span>
+                            {acc.description && (
+                              <span className="text-[11px] text-muted-foreground">{acc.country || "Неизвестно"}</span>
                             )}
-                            {isFree && (
-                              <span className="badge-free flex-shrink-0">Free</span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 flex-wrap">
                             {acc.phonePrefix && (
                               <span className="text-[11px] text-muted-foreground font-mono">{acc.phonePrefix}****</span>
                             )}
@@ -302,9 +322,29 @@ export default function Catalog() {
                                 DC {acc.dcId}
                               </span>
                             )}
+                            {idLabel && (
+                              <span
+                                className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
+                                style={{ background: "rgba(99,102,241,0.1)", color: "hsl(239 84% 70%)" }}
+                              >
+                                {idLabel}
+                              </span>
+                            )}
+                            {hasAutoDelivery && (
+                              <span
+                                className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
+                                style={{ background: "rgba(16,185,129,0.1)", color: "hsl(160 84% 39%)" }}
+                              >
+                                авто-выдача
+                              </span>
+                            )}
                           </div>
-                          {acc.description && (
-                            <p className="text-[11px] text-muted-foreground line-clamp-1">{acc.description}</p>
+                          {/* badges when description exists */}
+                          {acc.description && (acc.hasPremium || isFree) && (
+                            <div className="flex items-center gap-1.5">
+                              {acc.hasPremium && <span className="badge-premium flex-shrink-0">Premium</span>}
+                              {isFree && <span className="badge-free flex-shrink-0">Free</span>}
+                            </div>
                           )}
                         </div>
                       </div>

@@ -1,10 +1,7 @@
 import { Link, useLocation } from "wouter";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import WebApp from "@twa-dev/sdk";
 import { isTelegramWebApp } from "@/lib/telegram";
-
-const LOGO_DARK = "data:image/jpeg;base64,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";
-const LOGO_LIGHT = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAABtUlEQVR4nO2YPU8CQRCGn0OligUJhYmFiYWJhYmFiYWJhYmFiYWJhYkFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhQ==";
 
 function useTheme() {
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -77,17 +74,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [pressed, setPressed] = useState<string | null>(null);
   const { isDark, toggle } = useTheme();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (isTelegramWebApp()) {
       WebApp.ready();
       WebApp.expand();
     }
+    audioRef.current = new Audio("/tg-shop/click.mp3");
+    audioRef.current.volume = 0.6;
   }, []);
 
   const handlePress = (href: string) => {
     setPressed(href);
     setTimeout(() => setPressed(null), 180);
+  };
+
+  const handleLogoClick = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => {});
+    }
   };
 
   return (
@@ -137,7 +144,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
           }}
         />
         <div className="relative flex h-14 items-center justify-between px-4">
-          <div className="flex items-center gap-2.5">
+          <button
+            className="flex items-center gap-2.5 focus:outline-none active:scale-95 transition-transform"
+            onClick={handleLogoClick}
+            aria-label="VoidAccount"
+          >
             <div className="relative">
               <div
                 className="absolute inset-0 rounded-xl blur-md opacity-50"
@@ -154,7 +165,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <span className="font-bold tracking-tight text-[15px]">VoidAccount</span>
               <span className="text-[10px] font-medium" style={{ color: "hsl(262 83% 70%)" }}>marketplace</span>
             </div>
-          </div>
+          </button>
 
           {/* Theme toggle */}
           <button

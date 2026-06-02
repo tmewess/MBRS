@@ -3,8 +3,10 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Trash2, CheckCircle, XCircle, Send } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -26,10 +28,11 @@ export default function NewsPage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [sendToBot, setSendToBot] = useState(false);
 
   const fetchNews = () => {
     setIsLoading(true);
-    fetch("/api/news")
+    fetch("/api/news/all")
       .then((r) => r.json())
       .then((data) => {
         setItems(data);
@@ -46,6 +49,7 @@ export default function NewsPage() {
     setTitle("");
     setContent("");
     setIsActive(true);
+    setSendToBot(false);
     setShowForm(false);
     setEditing(null);
   };
@@ -61,10 +65,16 @@ export default function NewsPage() {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content, isActive }),
+        body: JSON.stringify({ title, content, isActive, sendToBot }),
       });
       if (res.ok) {
-        toast({ title: "Успех", description: editing ? "Новость обновлена" : "Новость создана" });
+        const data = await res.json();
+        const botSent = data.botSent;
+        let desc = editing ? "Новость обновлена" : "Новость создана";
+        if (sendToBot) {
+          desc += botSent ? " и отправлена в бот" : " (отправка в бот не удалась)";
+        }
+        toast({ title: "Успех", description: desc });
         resetForm();
         fetchNews();
       } else {
@@ -97,6 +107,7 @@ export default function NewsPage() {
     setTitle(item.title);
     setContent(item.content);
     setIsActive(item.isActive);
+    setSendToBot(false);
     setShowForm(true);
   };
 
@@ -107,7 +118,7 @@ export default function NewsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Новости</h1>
           <p className="text-sm text-muted-foreground">Управление новостями для WebApp и бота.</p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)}>
+        <Button onClick={() => { if (showForm) { resetForm(); } else { setShowForm(true); } }}>
           <Plus className="w-4 h-4 mr-1" />
           {showForm ? "Отмена" : "Добавить"}
         </Button>
@@ -122,6 +133,28 @@ export default function NewsPage() {
               <input type="checkbox" id="isActive" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="accent-primary" />
               <label htmlFor="isActive" className="text-sm">Активна</label>
             </div>
+
+            {/* Send to bot toggle */}
+            <div
+              className="flex items-center justify-between rounded-lg border border-border/40 p-3"
+              style={{ background: sendToBot ? "rgba(124,58,237,0.06)" : undefined }}
+            >
+              <div className="flex items-center gap-2">
+                <Send className="w-4 h-4 text-primary" />
+                <div>
+                  <Label htmlFor="sendToBot" className="text-sm font-medium cursor-pointer">
+                    Отправить в бот
+                  </Label>
+                  <p className="text-xs text-muted-foreground">Новость будет опубликована сообщением в Telegram боте</p>
+                </div>
+              </div>
+              <Switch
+                id="sendToBot"
+                checked={sendToBot}
+                onCheckedChange={setSendToBot}
+              />
+            </div>
+
             <div className="flex gap-2">
               <Button onClick={handleSave}>{editing ? "Сохранить" : "Создать"}</Button>
               <Button variant="outline" onClick={resetForm}>Отмена</Button>

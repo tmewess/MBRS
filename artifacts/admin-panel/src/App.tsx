@@ -15,6 +15,7 @@ import Users from "@/pages/users";
 import Sessions from "@/pages/sessions";
 import News from "@/pages/news";
 import Admins from "@/pages/admins";
+import Accounts from "@/pages/accounts";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ function Router() {
         <Route path="/sessions" component={Sessions} />
         <Route path="/news" component={News} />
         <Route path="/admins" component={Admins} />
+        <Route path="/accounts" component={Accounts} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>
