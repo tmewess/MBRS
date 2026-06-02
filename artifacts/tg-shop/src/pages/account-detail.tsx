@@ -8,6 +8,7 @@ import { getTelegramUser } from "@/lib/telegram";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, Download, RotateCcw, Shield, ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
 import { GetCodeModal } from "@/components/get-code-modal";
+import { Confetti } from "@/components/confetti";
 
 interface Account {
   id: number;
@@ -69,6 +70,7 @@ export default function AccountDetail() {
   const [order, setOrder] = useState<{ id: number; account: Account } | null>(null);
   const [showCopyDropdown, setShowCopyDropdown] = useState(false);
   const [showCodeModal, setShowCodeModal] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     fetch(`/api/accounts/${accountId}`)
@@ -131,6 +133,8 @@ export default function AccountDetail() {
     if (data.success) {
       if (!isFree) setBalance((b) => b - account.price);
       setOrder({ id: data.orderId, account: data.account });
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
       toast({ title: "Успех!", description: isFree ? "Аккаунт получен!" : "Аккаунт куплен!" });
     } else {
       toast({ title: "Ошибка", description: data.error ?? "Не удалось купить", variant: "destructive" });
@@ -333,6 +337,7 @@ export default function AccountDetail() {
           )}
         </main>
       </div>
+      <Confetti active={showConfetti} />
       {showCodeModal && (
         <GetCodeModal
           accountId={order.account.id}
@@ -391,8 +396,8 @@ export default function AccountDetail() {
         <Card className="p-4 bg-card/80 border-border/40">
           <h3 className="text-sm font-semibold mb-3">Достоверная информация</h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-            <InfoRow label="Страна" value={account.country || "—"} />
-            <InfoRow label="Последняя активность" value={account.lastActivity || "—"} />
+            <InfoRow label="Страна" value={account.country || "--"} />
+            <InfoRow label="Последняя активность" value={account.lastActivity || "--"} />
             <InfoRow label="Telegram Premium" value={account.hasPremium ? "Да" : "Нет"} />
             <InfoRow label="Есть пароль на аккаунте" value={account.hasPassword ? "Да" : "Нет"} />
             <InfoRow label="Спамблок" value={spamLabel} />
