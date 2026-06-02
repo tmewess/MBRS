@@ -4,9 +4,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Smartphone, CheckCircle2, AlertCircle, RefreshCw, Upload, Store, Package, CheckCircle, Globe, Star, ShieldAlert, Crown, Key, Wifi, Download, Search } from "lucide-react";
+import {
+  Loader2, Plus, Trash2, Smartphone, CheckCircle2, AlertCircle, RefreshCw,
+  Upload, Store, Package, CheckCircle, Globe, Star, ShieldAlert, Crown,
+  Key, Wifi, Download, Search, ShoppingBag,
+} from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -52,6 +66,19 @@ interface LolzAccount {
   registrationDate: string | null;
   canGetCode: boolean;
   origin: string | null;
+}
+
+interface AvailableAccount {
+  id: number;
+  phone: string | null;
+  country: string;
+  price: number;
+  isFree: string;
+  hasPremium: boolean;
+  hasPassword: boolean;
+  spamBlock: string | null;
+  status: string;
+  createdAt: string;
 }
 
 type AuthStep = "phone" | "code" | "password";
@@ -128,6 +155,14 @@ export default function Sessions() {
   const [lolzAccountIdMax, setLolzAccountIdMax] = useState("");
   const [selectedLolz, setSelectedLolz] = useState<LolzAccount | null>(null);
   const [isLolzDetailOpen, setIsLolzDetailOpen] = useState(false);
+
+  // Available accounts for sale states
+  const [isAvailableOpen, setIsAvailableOpen] = useState(false);
+  const [availableAccounts, setAvailableAccounts] = useState<AvailableAccount[]>([]);
+  const [availableLoading, setAvailableLoading] = useState(false);
+  const [deletingAccountId, setDeletingAccountId] = useState<number | null>(null);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
   const loadSessions = async () => {
     setLoading(true);
@@ -237,12 +272,12 @@ export default function Sessions() {
   const getIsoFlag = (code: string | null): string => {
     if (!code) return "";
     const flags: Record<string, string> = {
-      ru: "἟7἟a", ua: "἟a἞6", us: "἟a἟8", kz: "἟0἟f", by: "἞7἟e", pl: "἟5἟1",
-      de: "἞9἞a", fr: "἞b἟7", it: "἞e἟9", tr: "἟9἟7", in: "἞e἟3", cn: "἞8἟3",
-      jp: "἞f἟5", br: "἞7἟7", gb: "἞c἞7", nl: "἟3἟1", uz: "἟a἟f", az: "἞6἟f",
-      am: "἞6἟2", ge: "἞c἞a", kg: "἟0἞c", tj: "἟9἞f", md: "἟2἞9", lt: "἟1἟9",
-      lv: "἟1἟b", ee: "἞a἞a", ph: "἟5἞d", vn: "἟b἟3", th: "἟9἞d", ng: "἟3἞c",
-      pk: "἟5἟0", bd: "἞7἞9", id: "἞e἞9", other: "🌐",
+      ru: "🇷🇺", ua: "🇺🇦", us: "🇺🇸", kz: "🇰🇿", by: "🇧🇾", pl: "🇵🇱",
+      de: "🇩🇪", fr: "🇫🇷", it: "🇮🇹", tr: "🇹🇷", in: "🇮🇳", cn: "🇨🇳",
+      jp: "🇯🇵", br: "🇧🇷", gb: "🇬🇧", nl: "🇳🇱", uz: "🇺🇿", az: "🇦🇿",
+      am: "🇦🇲", ge: "🇬🇪", kg: "🇰🇬", tj: "🇹🇯", md: "🇲🇩", lt: "🇱🇹",
+      lv: "🇱🇻", ee: "🇪🇪", ph: "🇵🇭", vn: "🇻🇳", th: "🇹🇭", ng: "🇳🇬",
+      pk: "🇵🇰", bd: "🇧🇩", id: "🇮🇩", other: "🌐",
     };
     return flags[code.toLowerCase()] ?? "";
   };
@@ -445,6 +480,78 @@ export default function Sessions() {
     }
   };
 
+  // ---- Available accounts for sale ----
+
+  const loadAvailableAccounts = async () => {
+    setAvailableLoading(true);
+    try {
+      const res = await fetch("/api/accounts/available");
+      if (res.ok) {
+        const data = await res.json() as AvailableAccount[];
+        setAvailableAccounts(data);
+      } else {
+        toast({ title: "Ошибка", description: "Не удалось загрузить аккаунты", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Ошибка", description: "Нет подключения к API", variant: "destructive" });
+    } finally {
+      setAvailableLoading(false);
+    }
+  };
+
+  const handleOpenAvailable = () => {
+    setIsAvailableOpen(true);
+    loadAvailableAccounts();
+  };
+
+  const handleDeleteAvailableAccount = async (id: number) => {
+    setDeletingAccountId(id);
+    try {
+      const res = await fetch(`/api/accounts/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setAvailableAccounts(prev => prev.filter(a => a.id !== id));
+        toast({ title: "Удалено", description: "Аккаунт удалён" });
+      } else {
+        toast({ title: "Ошибка", description: "Не удалось удалить аккаунт", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Ошибка", description: "Нет подключения к API", variant: "destructive" });
+    } finally {
+      setDeletingAccountId(null);
+    }
+  };
+
+  const handleDeleteAllAvailable = async () => {
+    setShowDeleteAllConfirm(false);
+    setIsDeletingAll(true);
+    let deleted = 0;
+    let failed = 0;
+    const ids = availableAccounts.map(a => a.id);
+    for (const id of ids) {
+      try {
+        const res = await fetch(`/api/accounts/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          deleted++;
+          setAvailableAccounts(prev => prev.filter(a => a.id !== id));
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      }
+    }
+    setIsDeletingAll(false);
+    if (failed === 0) {
+      toast({ title: "Готово", description: `Удалено ${deleted} аккаунтов` });
+    } else {
+      toast({
+        title: "Частично удалено",
+        description: `Удалено: ${deleted}, ошибок: ${failed}`,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -454,10 +561,18 @@ export default function Sessions() {
             Авторизованные аккаунты для работы с API Telegram.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={loadSessions} disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-1 ${loading ? "animate-spin" : ""}`} />
             Обновить
+          </Button>
+          <Button
+            variant="outline"
+            className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={handleOpenAvailable}
+          >
+            <ShoppingBag className="w-4 h-4 mr-2" />
+            Аккаунты на продаже
           </Button>
           <Button variant="outline" onClick={() => { setIsTdataDialogOpen(true); }}>
             <Upload className="w-4 h-4 mr-2" />
@@ -790,19 +905,19 @@ export default function Sessions() {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="space-y-1">
                     <Label className="text-muted-foreground">Номер</Label>
-                    <div className="font-mono">{checkResult.phone || "—"}</div>
+                    <div className="font-mono">{checkResult.phone || "--"}</div>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-muted-foreground">ID</Label>
-                    <div className="font-mono">{checkResult.userId || "—"}</div>
+                    <div className="font-mono">{checkResult.userId || "--"}</div>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-muted-foreground">DC</Label>
-                    <div className="font-mono">{checkResult.dcId || "—"}</div>
+                    <div className="font-mono">{checkResult.dcId || "--"}</div>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-muted-foreground">Имя</Label>
-                    <div>{checkResult.firstName || "—"}</div>
+                    <div>{checkResult.firstName || "--"}</div>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-muted-foreground">Premium</Label>
@@ -815,12 +930,12 @@ export default function Sessions() {
                   <div className="space-y-1">
                     <Label className="text-muted-foreground">Спамблок</Label>
                     <div className={checkResult.spamBlock === "Отсутствует" ? "text-green-600" : "text-red-600"}>
-                      {checkResult.spamBlock || "—"}
+                      {checkResult.spamBlock || "--"}
                     </div>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-muted-foreground">Страна</Label>
-                    <div>{checkResult.country || "—"}</div>
+                    <div>{checkResult.country || "--"}</div>
                   </div>
                 </div>
                 {checkResult.authKey && (
@@ -918,7 +1033,7 @@ export default function Sessions() {
                 onChange={e => setSellCountry(e.target.value)}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="">— Не указана —</option>
+                <option value="">-- Не указана --</option>
                 {[
                   "Россия","США","Украина","Казахстан","Беларусь","Узбекистан",
                   "Азербайджан","Армения","Грузия","Кыргызстан","Таджикистан","Молдова",
@@ -984,6 +1099,138 @@ export default function Sessions() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Available Accounts Dialog */}
+      <Dialog open={isAvailableOpen} onOpenChange={setIsAvailableOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingBag className="w-5 h-5" />
+              Аккаунты на продаже
+              {!availableLoading && (
+                <Badge variant="secondary" className="ml-1">{availableAccounts.length}</Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex items-center justify-between gap-2 pt-1 pb-2 border-b shrink-0">
+            <p className="text-sm text-muted-foreground">
+              Аккаунты со статусом <span className="font-medium text-foreground">available</span> (доступны к покупке).
+            </p>
+            <div className="flex gap-2 shrink-0">
+              <Button variant="outline" size="sm" onClick={loadAvailableAccounts} disabled={availableLoading}>
+                <RefreshCw className={`w-3.5 h-3.5 mr-1 ${availableLoading ? "animate-spin" : ""}`} />
+                Обновить
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowDeleteAllConfirm(true)}
+                disabled={availableAccounts.length === 0 || availableLoading || isDeletingAll}
+              >
+                {isDeletingAll ? (
+                  <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />Удаление...</>
+                ) : (
+                  <><Trash2 className="w-3.5 h-3.5 mr-1" />Удалить все</>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto min-h-0">
+            {availableLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : availableAccounts.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <ShoppingBag className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">Нет аккаунтов на продаже</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {availableAccounts.map(acc => (
+                  <div key={acc.id} className="flex items-center justify-between px-4 py-3 gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-xs font-mono text-muted-foreground">
+                        #{acc.id}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-sm font-medium">
+                            {acc.phone ?? "--"}
+                          </span>
+                          {acc.country && (
+                            <span className="text-xs text-muted-foreground">{acc.country}</span>
+                          )}
+                          {acc.isFree === "true" ? (
+                            <Badge className="bg-green-500/15 text-green-600 border-green-500/20 text-[10px] px-1.5">Бесплатный</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-primary border-primary/30 text-[10px] px-1.5">${acc.price}</Badge>
+                          )}
+                          {acc.hasPremium && (
+                            <span className="text-[10px] bg-yellow-500/10 text-yellow-500 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                              <Crown className="w-2.5 h-2.5" />Premium
+                            </span>
+                          )}
+                          {acc.hasPassword && (
+                            <span className="text-[10px] bg-orange-500/10 text-orange-400 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                              <Key className="w-2.5 h-2.5" />2FA
+                            </span>
+                          )}
+                          {getSpamLabel(acc.spamBlock) && (
+                            <span className="text-[10px] bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded">
+                              {getSpamLabel(acc.spamBlock)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          Добавлен {format(new Date(acc.createdAt), "d MMM yyyy, HH:mm", { locale: ru })}
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:bg-destructive/10 shrink-0"
+                      onClick={() => handleDeleteAvailableAccount(acc.id)}
+                      disabled={deletingAccountId === acc.id || isDeletingAll}
+                    >
+                      {deletingAccountId === acc.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete All Confirmation */}
+      <AlertDialog open={showDeleteAllConfirm} onOpenChange={setShowDeleteAllConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить все аккаунты на продаже?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Это действие удалит <strong>{availableAccounts.length}</strong> аккаунт(ов) со статусом "на продаже".
+              Восстановить их будет невозможно.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAllAvailable}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Удалить все
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
