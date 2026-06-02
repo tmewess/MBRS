@@ -1,35 +1,31 @@
 import { Router } from "express";
-import { eq, sql, desc } from "drizzle-orm";
-import { db, userBalancesTable, ordersTable } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
+import { db, userBalancesTable, ordersTable, usersTable } from "@workspace/db";
 
 const router = Router();
 
 router.get("/users", async (_req, res): Promise<void> => {
-  const [balances, orders] = await Promise.all([
-    db.select().from(userBalancesTable).orderBy(desc(userBalancesTable.updatedAt)),
+  const [users, balances, orders] = await Promise.all([
+    db.select().from(usersTable).orderBy(desc(usersTable.lastSeenAt)),
+    db.select().from(userBalancesTable),
     db.select({ telegramUserId: ordersTable.telegramUserId }).from(ordersTable),
   ]);
 
-  const userMap = new Map<string, { balance: number; updatedAt: Date | null; orderCount: number }>();
-
-  for (const b of balances) {
-    userMap.set(b.telegramUserId, { balance: b.balance, updatedAt: b.updatedAt, orderCount: 0 });
-  }
-
+  const balanceMap = new Map(balances.map((b) => [b.telegramUserId, b.balance]));
+  const orderMap = new Map<string, number>();
   for (const o of orders) {
-    const uid = o.telegramUserId;
-    if (userMap.has(uid)) {
-      userMap.get(uid)!.orderCount += 1;
-    } else {
-      userMap.set(uid, { balance: 0, updatedAt: null, orderCount: 1 });
-    }
+    orderMap.set(o.telegramUserId, (orderMap.get(o.telegramUserId) ?? 0) + 1);
   }
 
-  const result = Array.from(userMap.entries()).map(([telegramUserId, data]) => ({
-    telegramUserId,
-    balance: data.balance,
-    updatedAt: data.updatedAt,
-    orderCount: data.orderCount,
+  const result = users.map((u) => ({
+    telegramUserId: u.telegramUserId,
+    username: u.username,
+    firstName: u.firstName,
+    lastName: u.lastName,
+    balance: balanceMap.get(u.telegramUserId) ?? 0,
+    orderCount: orderMap.get(u.telegramUserId) ?? 0,
+    lastSeenAt: u.lastSeenAt,
+    createdAt: u.createdAt,
   }));
 
   res.json(result);

@@ -1,7 +1,7 @@
 import { Bot, InlineKeyboard, InputFile } from "grammy";
 import fs from "fs";
 import { eq, desc } from "drizzle-orm";
-import { db, accountsTable, ordersTable, botSettingsTable, userBalancesTable, newsTable, telegramSessionsTable, adminsTable } from "@workspace/db";
+import { db, accountsTable, ordersTable, botSettingsTable, userBalancesTable, newsTable, telegramSessionsTable, adminsTable, usersTable } from "@workspace/db";
 import { TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
 import { logger } from "../lib/logger";
@@ -136,6 +136,24 @@ export async function startBot() {
   bot = new Bot(token);
 
   bot.command("start", requireSubscription, async (ctx) => {
+    if (ctx.from) {
+      await db.insert(usersTable).values({
+        telegramUserId: String(ctx.from.id),
+        username: ctx.from.username ?? null,
+        firstName: ctx.from.first_name ?? null,
+        lastName: ctx.from.last_name ?? null,
+        lastSeenAt: new Date(),
+      }).onConflictDoUpdate({
+        target: usersTable.telegramUserId,
+        set: {
+          username: ctx.from.username ?? null,
+          firstName: ctx.from.first_name ?? null,
+          lastName: ctx.from.last_name ?? null,
+          lastSeenAt: new Date(),
+        },
+      });
+    }
+
     const settings = await getBotSettings();
     const accounts = await getAvailableAccounts();
     const userId = ctx.from?.id;

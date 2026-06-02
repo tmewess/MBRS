@@ -5,3 +5,4 @@ export * from "./user_balances";
 export * from "./telegram_sessions";
 export * from "./news";
 export * from "./admins";
+export * from "./users";
