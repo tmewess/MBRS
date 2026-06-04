@@ -8,6 +8,7 @@ import path from "path";
 import fs from "fs";
 import { extractTdataSession } from "../lib/tdata";
 import { logger } from "../lib/logger";
+import { getNextProxy, buildProxyConfig } from "../lib/proxy-manager";
 
 const router = Router();
 
@@ -91,8 +92,10 @@ router.post("/sessions/request", async (req, res): Promise<void> => {
     return;
   }
   try {
+    const proxy = await getNextProxy();
     const client = new TelegramClient(new StringSession(""), apiId, apiHash, {
       connectionRetries: 3,
+      ...(proxy ? { proxy: buildProxyConfig(proxy) } : {}),
     });
     await client.connect();
     const result = await client.sendCode({ apiId, apiHash }, phone);
@@ -281,7 +284,11 @@ router.post("/sessions/:id/check", async (req, res): Promise<void> => {
 
   let client: TelegramClient | null = null;
   try {
-    client = new TelegramClient(new StringSession(session.sessionString), apiId, apiHash, { connectionRetries: 2 });
+    const proxy = await getNextProxy();
+    client = new TelegramClient(new StringSession(session.sessionString), apiId, apiHash, {
+      connectionRetries: 2,
+      ...(proxy ? { proxy: buildProxyConfig(proxy) } : {}),
+    });
     await client.connect();
     const me = await client.getMe() as any;
     const sessionStr = (client.session as StringSession).save();
@@ -378,7 +385,11 @@ router.post("/sessions/:id/kick-others", async (req, res): Promise<void> => {
 
   let client: TelegramClient | null = null;
   try {
-    client = new TelegramClient(new StringSession(session.sessionString), apiId, apiHash, { connectionRetries: 2 });
+    const proxy = await getNextProxy();
+    client = new TelegramClient(new StringSession(session.sessionString), apiId, apiHash, {
+      connectionRetries: 2,
+      ...(proxy ? { proxy: buildProxyConfig(proxy) } : {}),
+    });
     await client.connect();
 
     const result = await client.invoke(new Api.account.GetAuthorizations()) as any;
@@ -439,7 +450,11 @@ router.post("/sessions/:id/get-code", async (req, res): Promise<void> => {
 
   let client: TelegramClient | null = null;
   try {
-    client = new TelegramClient(new StringSession(session.sessionString), apiId, apiHash, { connectionRetries: 2 });
+    const proxy = await getNextProxy();
+    client = new TelegramClient(new StringSession(session.sessionString), apiId, apiHash, {
+      connectionRetries: 2,
+      ...(proxy ? { proxy: buildProxyConfig(proxy) } : {}),
+    });
     await client.connect();
 
     const messages = await client.getMessages(777000, { limit: 10 }) as any[];

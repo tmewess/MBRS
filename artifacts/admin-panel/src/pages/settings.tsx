@@ -4,7 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Trash2, Plus, Shield, Loader2 } from "lucide-react";
 
 interface BotSettings {
   id?: number;
@@ -20,6 +22,15 @@ interface BotSettings {
   lolzApiKey: string;
   tgApiId: string;
   tgApiHash: string;
+}
+
+interface Proxy {
+  id: number;
+  ip: string;
+  port: string;
+  username: string | null;
+  password: string | null;
+  createdAt: string;
 }
 
 export default function Settings() {
@@ -39,6 +50,13 @@ export default function Settings() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  const [proxies, setProxies] = useState<Proxy[]>([]);
+  const [proxiesLoading, setProxiesLoading] = useState(true);
+  const [newProxy, setNewProxy] = useState({ ip: "", port: "", username: "", password: "" });
+  const [addingProxy, setAddingProxy] = useState(false);
+  const [deletingProxyId, setDeletingProxyId] = useState<number | null>(null);
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -62,7 +80,18 @@ export default function Settings() {
       })
       .catch(() => {})
       .finally(() => setIsLoading(false));
+
+    fetchProxies();
   }, []);
+
+  const fetchProxies = () => {
+    setProxiesLoading(true);
+    fetch("/api/proxies")
+      .then((r) => r.json())
+      .then((data) => setProxies(Array.isArray(data) ? data : []))
+      .catch(() => setProxies([]))
+      .finally(() => setProxiesLoading(false));
+  };
 
   const handleChange = (field: keyof BotSettings, value: string | boolean) => {
     setSettings((prev) => ({ ...prev, [field]: value }));
@@ -85,6 +114,50 @@ export default function Settings() {
       toast({ title: "Ошибка", description: "Не удалось сохранить", variant: "destructive" });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleAddProxy = async () => {
+    if (!newProxy.ip || !newProxy.port) {
+      toast({ title: "Ошибка", description: "IP и порт обязательны", variant: "destructive" });
+      return;
+    }
+    setAddingProxy(true);
+    try {
+      const res = await fetch("/api/proxies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newProxy),
+      });
+      if (res.ok) {
+        toast({ title: "Успешно", description: "Прокси добавлен" });
+        setNewProxy({ ip: "", port: "", username: "", password: "" });
+        fetchProxies();
+      } else {
+        const data = await res.json();
+        throw new Error(data.error || "Failed");
+      }
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e.message || "Не удалось добавить прокси", variant: "destructive" });
+    } finally {
+      setAddingProxy(false);
+    }
+  };
+
+  const handleDeleteProxy = async (id: number) => {
+    setDeletingProxyId(id);
+    try {
+      const res = await fetch(`/api/proxies/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast({ title: "Удалено", description: "Прокси удалён" });
+        setProxies((prev) => prev.filter((p) => p.id !== id));
+      } else {
+        throw new Error("Failed");
+      }
+    } catch {
+      toast({ title: "Ошибка", description: "Не удалось удалить прокси", variant: "destructive" });
+    } finally {
+      setDeletingProxyId(null);
     }
   };
 
@@ -199,6 +272,123 @@ export default function Settings() {
           {isSaving ? "Сохранение..." : "Сохранить настройки"}
         </Button>
       </form>
+
+      {/* Прокси */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="w-5 h-5" />
+            Прокси для Telegram API
+          </CardTitle>
+          <CardDescription>
+            Прокси используются при каждом подключении к Telegram API. Если добавлено несколько — они чередуются по очереди (round-robin).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Форма добавления */}
+          <div className="border rounded-md p-4 space-y-4">
+            <h4 className="font-medium text-sm">Добавить прокси</h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>IP адрес</Label>
+                <Input
+                  value={newProxy.ip}
+                  onChange={(e) => setNewProxy((p) => ({ ...p, ip: e.target.value }))}
+                  placeholder="1.2.3.4"
+                />
+              </div>
+              <div>
+                <Label>Порт</Label>
+                <Input
+                  value={newProxy.port}
+                  onChange={(e) => setNewProxy((p) => ({ ...p, port: e.target.value }))}
+                  placeholder="1080"
+                />
+              </div>
+              <div>
+                <Label>Логин <span className="text-muted-foreground">(необязательно)</span></Label>
+                <Input
+                  value={newProxy.username}
+                  onChange={(e) => setNewProxy((p) => ({ ...p, username: e.target.value }))}
+                  placeholder="user"
+                />
+              </div>
+              <div>
+                <Label>Пароль <span className="text-muted-foreground">(необязательно)</span></Label>
+                <Input
+                  type="password"
+                  value={newProxy.password}
+                  onChange={(e) => setNewProxy((p) => ({ ...p, password: e.target.value }))}
+                  placeholder="••••••"
+                />
+              </div>
+            </div>
+            <Button onClick={handleAddProxy} disabled={addingProxy} className="w-full">
+              {addingProxy ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Добавление...</>
+              ) : (
+                <><Plus className="w-4 h-4 mr-2" />Добавить прокси</>
+              )}
+            </Button>
+          </div>
+
+          {/* Список прокси */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-sm">
+                Активные прокси
+              </h4>
+              <Badge variant="secondary">{proxies.length} шт.</Badge>
+            </div>
+
+            {proxiesLoading ? (
+              <div className="flex items-center justify-center py-6 text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Загрузка...
+              </div>
+            ) : proxies.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground text-sm border rounded-md">
+                Прокси не добавлены. Подключения к Telegram API будут без прокси.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {proxies.map((proxy, idx) => (
+                  <div key={proxy.id} className="flex items-center justify-between border rounded-md px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="text-xs font-mono w-6 h-6 flex items-center justify-center p-0">
+                        {idx + 1}
+                      </Badge>
+                      <div>
+                        <p className="font-mono text-sm font-medium">
+                          {proxy.ip}:{proxy.port}
+                        </p>
+                        {proxy.username && (
+                          <p className="text-xs text-muted-foreground">
+                            Логин: {proxy.username}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteProxy(proxy.id)}
+                      disabled={deletingProxyId === proxy.id}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      {deletingProxyId === proxy.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
