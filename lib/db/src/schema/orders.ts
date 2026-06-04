@@ -8,6 +8,7 @@ export const ordersTable = pgTable("orders", {
   telegramUserId: text("telegram_user_id").notNull(),
   telegramUsername: text("telegram_username"),
   accountId: integer("account_id").references(() => accountsTable.id),
+  otherAccountId: integer("other_account_id"),
   status: text("status").notNull().default("pending"),
   paymentMethod: text("payment_method").notNull(),
   amount: doublePrecision("amount").notNull(),
