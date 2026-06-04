@@ -10,12 +10,7 @@ export async function getNextProxy() {
   return proxy;
 }
 
-export function buildProxyConfig(proxy: {
-  ip: string;
-  port: string;
-  username?: string | null;
-  password?: string | null;
-}) {
+export function buildProxyConfig(proxy: { ip: string; port: string; username?: string | null; password?: string | null }) {
   return {
     socksType: 5 as const,
     ip: proxy.ip,

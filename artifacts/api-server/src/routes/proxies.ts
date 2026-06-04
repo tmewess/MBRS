@@ -17,12 +17,17 @@ router.get("/proxies", async (_req, res): Promise<void> => {
 
 router.post("/proxies", async (req, res): Promise<void> => {
   const { ip, port, username, password } = req.body as {
-    ip?: string; port?: string; username?: string; password?: string;
+    ip?: string;
+    port?: string;
+    username?: string;
+    password?: string;
   };
+
   if (!ip || !port) {
     res.status(400).json({ error: "IP и порт обязательны" });
     return;
   }
+
   try {
     const [proxy] = await db
       .insert(proxiesTable)
@@ -37,7 +42,10 @@ router.post("/proxies", async (req, res): Promise<void> => {
 
 router.delete("/proxies/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
   try {
     await db.delete(proxiesTable).where(eq(proxiesTable.id, id));
     res.json({ success: true });
