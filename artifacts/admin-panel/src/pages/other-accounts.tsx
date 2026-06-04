@@ -58,7 +58,7 @@ interface OtherAccount {
 }
 
 export default function OtherAccounts() {
-  const [accounts, setAccounts] = useState<<OtherAccount[]>([]);
+  const [accounts, setAccounts] = useState<OtherAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [isOpen, setIsOpen] = useState(false);
