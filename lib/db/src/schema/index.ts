@@ -6,4 +6,3 @@ export * from "./telegram_sessions";
 export * from "./news";
 export * from "./admins";
 export * from "./users";
-export * from "./other_accounts";

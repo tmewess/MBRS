@@ -90,7 +90,10 @@ export default function AccountDetail() {
   useEffect(() => {
     fetch(`/api/accounts/${accountId}`)
       .then((r) => r.json())
-      .then((data) => { setAccount(data); setIsLoading(false); });
+      .then((data) => {
+        setAccount(data);
+        setIsLoading(false);
+      });
     if (user) {
       fetch(`/api/balance/${user.id}`)
         .then((r) => r.json())
@@ -132,41 +135,26 @@ export default function AccountDetail() {
       return;
     }
 
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000);
-
-      const res = await fetch("/api/balance/purchase", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          telegramUserId: String(user.id),
-          telegramUsername: user.username,
-          accountId: account.id,
-        }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-
-      const data = await res.json();
-      if (data.success) {
-        if (!isFree) setBalance((b) => b - account.price);
-        setOrder({ id: data.orderId, account: data.account });
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 3000);
-        toast({ title: "Успех!", description: isFree ? "Аккаунт получен!" : "Аккаунт куплен!" });
-      } else {
-        toast({ title: "Ошибка", description: data.error ?? "Не удалось купить", variant: "destructive" });
-      }
-    } catch (e: unknown) {
-      if (e instanceof Error && e.name === "AbortError") {
-        toast({ title: "Таймаут", description: "Сервер не отвечает. Проверьте баланс -- возможно покупка прошла.", variant: "destructive" });
-      } else {
-        toast({ title: "Ошибка", description: "Нет соединения с сервером", variant: "destructive" });
-      }
-    } finally {
-      setIsBuying(false);
+    const res = await fetch("/api/balance/purchase", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        telegramUserId: String(user.id),
+        telegramUsername: user.username,
+        accountId: account.id,
+      }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (!isFree) setBalance((b) => b - account.price);
+      setOrder({ id: data.orderId, account: data.account });
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
+      toast({ title: "Успех!", description: isFree ? "Аккаунт получен!" : "Аккаунт куплен!" });
+    } else {
+      toast({ title: "Ошибка", description: data.error ?? "Не удалось купить", variant: "destructive" });
     }
+    setIsBuying(false);
   };
 
   const handleDownload = () => {
@@ -188,6 +176,7 @@ export default function AccountDetail() {
     }
   };
 
+
   if (isLoading) {
     return (
       <Layout>
@@ -208,6 +197,7 @@ export default function AccountDetail() {
     );
   }
 
+  // Full-screen delivery view after purchase
   if (order) {
     const acc = order.account;
     const hasApiIntegration = !!(acc.lolzItemId) || !!(acc.sessionId);
@@ -262,6 +252,7 @@ export default function AccountDetail() {
               </div>
             )}
 
+            {/* DC moved to position of AuthKey (3rd) */}
             {acc.dcId && (
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">DC:</label>
@@ -286,6 +277,7 @@ export default function AccountDetail() {
               </div>
             )}
 
+            {/* AuthKey moved to bottom */}
             {acc.authKey && (
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Auth Key:</label>
@@ -299,15 +291,29 @@ export default function AccountDetail() {
             )}
 
             <div className="relative">
-              <Button variant="outline" className="w-full h-10 text-sm" onClick={() => setShowCopyDropdown(!showCopyDropdown)}>
+              <Button
+                variant="outline"
+                className="w-full h-10 text-sm"
+                onClick={() => setShowCopyDropdown(!showCopyDropdown)}
+              >
                 Скопировать данные
                 {showCopyDropdown ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />}
               </Button>
               {showCopyDropdown && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-10 overflow-hidden">
-                  <Button variant="ghost" className="w-full justify-start text-xs h-9 rounded-none" onClick={handleCopyAll}>Все данные</Button>
-                  {acc.phone && <Button variant="ghost" className="w-full justify-start text-xs h-9 rounded-none" onClick={() => handleCopy(acc.phone!, "Номер")}>Только номер</Button>}
-                  {acc.authKey && <Button variant="ghost" className="w-full justify-start text-xs h-9 rounded-none" onClick={() => handleCopy(acc.authKey!, "Auth Key")}>Только Auth Key</Button>}
+                  <Button variant="ghost" className="w-full justify-start text-xs h-9 rounded-none" onClick={handleCopyAll}>
+                    Все данные
+                  </Button>
+                  {acc.phone && (
+                    <Button variant="ghost" className="w-full justify-start text-xs h-9 rounded-none" onClick={() => handleCopy(acc.phone!, "Номер")}>
+                      Только номер
+                    </Button>
+                  )}
+                  {acc.authKey && (
+                    <Button variant="ghost" className="w-full justify-start text-xs h-9 rounded-none" onClick={() => handleCopy(acc.authKey!, "Auth Key")}>
+                      Только Auth Key
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -316,9 +322,12 @@ export default function AccountDetail() {
           {acc.filePath && (
             <Card className="p-4 space-y-3 bg-card/80 border-border/40">
               <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Скачать:</div>
-              <Button size="sm" variant="outline" className="h-8 text-xs bg-primary/10 border-primary/20 text-primary hover:bg-primary/20" onClick={handleDownload}>
-                <Download className="w-3 h-3 mr-1" /> TData
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" className="h-8 text-xs bg-primary/10 border-primary/20 text-primary hover:bg-primary/20" onClick={handleDownload}>
+                  <Download className="w-3 h-3 mr-1" />
+                  TData
+                </Button>
+              </div>
             </Card>
           )}
 
@@ -326,9 +335,12 @@ export default function AccountDetail() {
             <Card className="p-4 space-y-3 bg-card/80 border-border/40">
               <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Получить код для входа в Telegram</div>
               <div className="flex gap-2">
-                <Button className="flex-1 h-10 text-sm bg-green-600 hover:bg-green-700 text-white" onClick={() => setShowCodeModal(true)}>Получить код</Button>
+                <Button className="flex-1 h-10 text-sm bg-green-600 hover:bg-green-700 text-white" onClick={() => setShowCodeModal(true)}>
+                  Получить код
+                </Button>
                 <Button variant="outline" className="flex-1 h-10 text-sm" onClick={handleResetSessions}>
-                  <RotateCcw className="w-3.5 h-3.5 mr-1" /> Сбросить сессии
+                  <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                  Сбросить сессии
                 </Button>
               </div>
             </Card>
@@ -337,18 +349,24 @@ export default function AccountDetail() {
       </div>
       <Confetti active={showConfetti} />
       {showCodeModal && (
-        <GetCodeModal accountId={order.account.id} phone={order.account.phone} onClose={() => setShowCodeModal(false)} />
+        <GetCodeModal
+          accountId={order.account.id}
+          phone={order.account.phone}
+          onClose={() => setShowCodeModal(false)}
+        />
       )}
       </>
     );
   }
 
+  // Purchase view
   const spamLabel = !account.spamBlock || account.spamBlock === "0" || account.spamBlock === "none"
     ? "Отсутствует"
     : account.spamBlock === "1" ? "Спам" : account.spamBlock;
 
   return (
     <div className="min-h-[100dvh] w-full flex flex-col bg-background text-foreground pb-24">
+      {/* Back header */}
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-14 items-center px-4 gap-3">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setLocation("/")}>
@@ -382,12 +400,17 @@ export default function AccountDetail() {
         {account.dcId && (
           <div className="flex items-center gap-2">
             {account.phonePrefix && (
-              <span className="text-[10px] bg-muted/60 px-2 py-0.5 rounded-full text-muted-foreground font-mono">{account.phonePrefix}****</span>
+              <span className="text-[10px] bg-muted/60 px-2 py-0.5 rounded-full text-muted-foreground font-mono">
+                {account.phonePrefix}****
+              </span>
             )}
-            <span className="text-[10px] bg-muted/60 px-2 py-0.5 rounded-full text-muted-foreground">DC {account.dcId}</span>
+            <span className="text-[10px] bg-muted/60 px-2 py-0.5 rounded-full text-muted-foreground">
+              DC {account.dcId}
+            </span>
           </div>
         )}
 
+        {/* Достоверная информация */}
         <Card className="p-4 bg-card/80 border-border/40">
           <h3 className="text-sm font-semibold mb-3">Достоверная информация</h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-3">
@@ -396,8 +419,12 @@ export default function AccountDetail() {
             <InfoRow label="Telegram Premium" value={account.hasPremium ? "Да" : "Нет"} />
             <InfoRow label="Есть пароль на аккаунте" value={account.hasPassword ? "Да" : "Нет"} />
             <InfoRow label="Спамблок" value={spamLabel} />
-            {account.origin && <InfoRow label="Происхождение аккаунта" value={account.origin} />}
-            {account.registrationDate && <InfoRow label="Дата регистрации" value={account.registrationDate} />}
+            {account.origin && (
+              <InfoRow label="Происхождение аккаунта" value={account.origin} />
+            )}
+            {account.registrationDate && (
+              <InfoRow label="Дата регистрации" value={account.registrationDate} />
+            )}
           </div>
         </Card>
 

@@ -16,7 +16,6 @@ import Sessions from "@/pages/sessions";
 import News from "@/pages/news";
 import Admins from "@/pages/admins";
 import Accounts from "@/pages/accounts";
-import OtherAccounts from "@/pages/other-accounts";
 
 const queryClient = new QueryClient();
 
@@ -47,7 +46,6 @@ function Router() {
         <Route path="/news" component={News} />
         <Route path="/admins" component={Admins} />
         <Route path="/accounts" component={Accounts} />
-        <Route path="/other-accounts" component={OtherAccounts} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

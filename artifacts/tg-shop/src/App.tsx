@@ -5,7 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Catalog from "@/pages/catalog";
 import AccountDetail from "@/pages/account-detail";
-import OtherDetail from "@/pages/other-detail";
 import Orders from "@/pages/orders";
 import News from "@/pages/news";
 import Profile from "@/pages/profile";
@@ -20,7 +19,6 @@ function App() {
           <Switch>
             <Route path="/" component={Catalog} />
             <Route path="/account/:id" component={AccountDetail} />
-            <Route path="/other/:id" component={OtherDetail} />
             <Route path="/orders" component={Orders} />
             <Route path="/news" component={News} />
             <Route path="/profile" component={Profile} />
