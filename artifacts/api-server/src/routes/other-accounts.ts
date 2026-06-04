@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db, otherAccountsTable, ordersTable, userBalancesTable } from "@workspace/db";
-import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -64,7 +63,7 @@ router.post("/other-accounts", async (req, res): Promise<void> => {
 router.patch("/other-accounts/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const body = req.body as Partial<<Record<string, unknown>>;
+  const body = req.body as Partial<Record<string, unknown>>;
   const [account] = await db.update(otherAccountsTable).set(body).where(eq(otherAccountsTable.id, id)).returning();
   if (!account) { res.status(404).json({ error: "Not found" }); return; }
   res.json(account);

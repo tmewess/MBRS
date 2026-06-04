@@ -19,5 +19,5 @@ export const otherAccountsTable = pgTable("other_accounts", {
 });
 
 export const insertOtherAccountSchema = createInsertSchema(otherAccountsTable).omit({ id: true, createdAt: true });
-export type InsertOtherAccount = z.infer<<typeof insertOtherAccountSchema>;
+export type InsertOtherAccount = z.infer<typeof insertOtherAccountSchema>;
 export type OtherAccount = typeof otherAccountsTable.$inferSelect;
