@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Users, ShoppingCart, Settings, LogOut, Menu, X, Globe, Smartphone, Newspaper, ShieldCheck, UserCheck } from "lucide-react";
+import { LayoutDashboard, Users, ShoppingCart, Settings, LogOut, Menu, X, Globe, Smartphone, Newspaper, ShieldCheck, UserCheck, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface AppLayoutProps {
@@ -17,6 +17,7 @@ export function AppLayout({ children, username, onLogout }: AppLayoutProps) {
     { href: "/", label: "Главная", icon: LayoutDashboard },
     { href: "/orders", label: "Заказы", icon: ShoppingCart },
     { href: "/accounts", label: "Аккаунты", icon: UserCheck },
+    { href: "/other-products", label: "Прочие товары", icon: Package },
     { href: "/users", label: "Пользователи", icon: Globe },
     { href: "/sessions", label: "Сессии", icon: Smartphone },
     { href: "/news", label: "Новости", icon: Newspaper },
@@ -59,13 +60,7 @@ export function AppLayout({ children, username, onLogout }: AppLayoutProps) {
         {username && (
           <div className="p-3 border-t border-border flex items-center justify-between gap-2">
             <span className="text-xs text-muted-foreground font-mono truncate">@{username}</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-foreground shrink-0"
-              onClick={onLogout}
-              title="Выйти"
-            >
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground shrink-0" onClick={onLogout} title="Выйти">
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
@@ -74,10 +69,7 @@ export function AppLayout({ children, username, onLogout }: AppLayoutProps) {
 
       {/* Mobile overlay */}
       {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/60 md:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
+        <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
       {/* Mobile sidebar drawer */}

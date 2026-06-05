@@ -5,6 +5,7 @@ import { Layout } from "@/components/layout";
 import { Plus, Star, Zap } from "lucide-react";
 import { getTelegramUser } from "@/lib/telegram";
 import { useToast } from "@/hooks/use-toast";
+import { getSocialNetwork } from "@/lib/social-networks";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,16 @@ interface Account {
   sessionId: number | null;
 }
 
+interface OtherProduct {
+  id: number;
+  socialNetwork: string;
+  description: string | null;
+  price: number;
+  isFree: string;
+  status: string;
+  createdAt: string;
+}
+
 const COUNTRY_FLAGS: Record<string, string> = {
   "Австралия": "🇦🇺", "Австрия": "🇦🇹", "Азербайджан": "🇦🇿",
   "Албания": "🇦🇱", "Алжир": "🇩🇿", "Ангола": "🇦🇴",
@@ -48,61 +59,24 @@ const COUNTRY_FLAGS: Record<string, string> = {
   "Бенин": "🇧🇯", "Болгария": "🇧🇬", "Боливия": "🇧🇴",
   "Босния и Герцеговина": "🇧🇦", "Ботсвана": "🇧🇼", "Бразилия": "🇧🇷",
   "Бруней": "🇧🇳", "Буркина-Фасо": "🇧🇫", "Бурунди": "🇧🇮",
-  "Бутан": "🇧🇹", "Вануату": "🇻🇺", "Великобритания": "🇬🇧",
-  "Венгрия": "🇭🇺", "Венесуэла": "🇻🇪", "Вьетнам": "🇻🇳",
-  "Габон": "🇬🇦", "Гаити": "🇭🇹", "Гамбия": "🇬🇲",
-  "Гана": "🇬🇭", "Гватемала": "🇬🇹", "Гвинея": "🇬🇳",
-  "Гвинея-Бисау": "🇬🇼", "Германия": "🇩🇪", "Гондурас": "🇭🇳",
-  "Гренада": "🇬🇩", "Греция": "🇬🇷", "Грузия": "🇬🇪",
-  "Дания": "🇩🇰", "Джибути": "🇩🇯", "Доминика": "🇩🇲",
-  "Доминиканская Республика": "🇩🇴", "Египет": "🇪🇬", "Замбия": "🇿🇲",
-  "Зимбабве": "🇿🇼", "Израиль": "🇮🇱", "Индия": "🇮🇳",
+  "Бутан": "🇧🇹", "Великобритания": "🇬🇧", "Венгрия": "🇭🇺",
+  "Венесуэла": "🇻🇪", "Вьетнам": "🇻🇳", "Германия": "🇩🇪",
+  "Греция": "🇬🇷", "Грузия": "🇬🇪", "Дания": "🇩🇰",
+  "Египет": "🇪🇬", "Израиль": "🇮🇱", "Индия": "🇮🇳",
   "Индонезия": "🇮🇩", "Иордания": "🇯🇴", "Ирак": "🇮🇶",
-  "Иран": "🇮🇷", "Ирландия": "🇮🇪", "Исландия": "🇮🇸",
-  "Испания": "🇪🇸", "Италия": "🇮🇹", "Йемен": "🇾🇪",
-  "Кабо-Верде": "🇨🇻", "Казахстан": "🇰🇿", "Камбоджа": "🇰🇭",
-  "Камерун": "🇨🇲", "Канада": "🇨🇦", "Катар": "🇶🇦",
-  "Кения": "🇰🇪", "Кипр": "🇨🇾", "Кыргызстан": "🇰🇬",
-  "Китай": "🇨🇳", "Колумбия": "🇨🇴", "Коморы": "🇰🇲",
-  "Конго": "🇨🇬", "Косово": "🇽🇰", "Коста-Рика": "🇨🇷",
-  "Кот-д'Ивуар": "🇨🇮", "Куба": "🇨🇺", "Кувейт": "🇰🇼",
-  "Лаос": "🇱🇦", "Латвия": "🇱🇻", "Лесото": "🇱🇸",
-  "Либерия": "🇱🇷", "Ливан": "🇱🇧", "Ливия": "🇱🇾",
-  "Литва": "🇱🇹", "Лихтенштейн": "🇱🇮", "Люксембург": "🇱🇺",
-  "Маврикий": "🇲🇺", "Мавритания": "🇲🇷", "Мадагаскар": "🇲🇬",
-  "Малави": "🇲🇼", "Малайзия": "🇲🇾", "Мали": "🇲🇱",
-  "Мальдивы": "🇲🇻", "Мальта": "🇲🇹", "Марокко": "🇲🇦",
-  "Маршалловы Острова": "🇲🇭", "Мексика": "🇲🇽", "Микронезия": "🇫🇲",
-  "Мозамбик": "🇲🇿", "Молдова": "🇲🇩", "Монако": "🇲🇨",
-  "Монголия": "🇲🇳", "Мьянма": "🇲🇲", "Намибия": "🇳🇦",
-  "Науру": "🇳🇷", "Непал": "🇳🇵", "Нигер": "🇳🇪",
-  "Нигерия": "🇳🇬", "Нидерланды": "🇳🇱", "Никарагуа": "🇳🇮",
-  "Новая Зеландия": "🇳🇿", "Норвегия": "🇳🇴", "ОАЭ": "🇦🇪",
-  "Оман": "🇴🇲", "Пакистан": "🇵🇰", "Палау": "🇵🇼",
-  "Панама": "🇵🇦", "Папуа Новая Гвинея": "🇵🇬", "Парагвай": "🇵🇾",
-  "Перу": "🇵🇪", "Польша": "🇵🇱", "Португалия": "🇵🇹",
-  "Россия": "🇷🇺", "Руанда": "🇷🇼", "Румыния": "🇷🇴",
-  "Сальвадор": "🇸🇻", "Самоа": "🇼🇸", "Сан-Марино": "🇸🇲",
-  "Сан-Томе и Принсипи": "🇸🇹", "Саудовская Аравия": "🇸🇦",
-  "Северная Македония": "🇲🇰", "Сейшелы": "🇸🇨", "Сенегал": "🇸🇳",
-  "Сент-Китс и Невис": "🇰🇳", "Сент-Люсия": "🇱🇨",
-  "Сент-Винсент и Гренадины": "🇻🇨", "Сербия": "🇷🇸",
-  "Сингапур": "🇸🇬", "Сирия": "🇸🇾", "Словакия": "🇸🇰",
-  "Словения": "🇸🇮", "Соломоновы Острова": "🇸🇧", "Сомали": "🇸🇴",
-  "Судан": "🇸🇩", "Суринам": "🇸🇷", "США": "🇺🇸",
-  "Сьерра-Леоне": "🇸🇱", "Таджикистан": "🇹🇯", "Таиланд": "🇹🇭",
-  "Танзания": "🇹🇿", "Того": "🇹🇬", "Тонга": "🇹🇴",
-  "Тринидад и Тобаго": "🇹🇹", "Тувалу": "🇹🇻", "Тунис": "🇹🇳",
-  "Туркменистан": "🇹🇲", "Турция": "🇹🇷", "Уганда": "🇺🇬",
-  "Узбекистан": "🇺🇿", "Украина": "🇺🇦", "Уругвай": "🇺🇾",
-  "Фиджи": "🇫🇯", "Филиппины": "🇵🇭", "Финляндия": "🇫🇮",
-  "Франция": "🇫🇷", "Хорватия": "🇭🇷", "Центральноафриканская Республика": "🇨🇫",
-  "Чад": "🇹🇩", "Черногория": "🇲🇪", "Чехия": "🇨🇿",
-  "Чили": "🇨🇱", "Швейцария": "🇨🇭", "Швеция": "🇸🇪",
-  "Шри-Ланка": "🇱🇰", "Эквадор": "🇪🇨", "Экваториальная Гвинея": "🇬🇶",
-  "Эритрея": "🇪🇷", "Эсватини": "🇸🇿", "Эстония": "🇪🇪",
-  "Эфиопия": "🇪🇹", "ЮАР": "🇿🇦", "Южная Корея": "🇰🇷",
-  "Южный Судан": "🇸🇸", "Ямайка": "🇯🇲", "Япония": "🇯🇵",
+  "Иран": "🇮🇷", "Ирландия": "🇮🇪", "Испания": "🇪🇸",
+  "Италия": "🇮🇹", "Казахстан": "🇰🇿", "Канада": "🇨🇦",
+  "Китай": "🇨🇳", "Колумбия": "🇨🇴", "Кыргызстан": "🇰🇬",
+  "Латвия": "🇱🇻", "Литва": "🇱🇹", "Мексика": "🇲🇽",
+  "Молдова": "🇲🇩", "Монголия": "🇲🇳", "Нидерланды": "🇳🇱",
+  "Норвегия": "🇳🇴", "ОАЭ": "🇦🇪", "Пакистан": "🇵🇰",
+  "Польша": "🇵🇱", "Португалия": "🇵🇹", "Россия": "🇷🇺",
+  "Румыния": "🇷🇴", "Саудовская Аравия": "🇸🇦", "Сербия": "🇷🇸",
+  "Сингапур": "🇸🇬", "Словакия": "🇸🇰", "США": "🇺🇸",
+  "Таджикистан": "🇹🇯", "Таиланд": "🇹🇭", "Турция": "🇹🇷",
+  "Узбекистан": "🇺🇿", "Украина": "🇺🇦", "Финляндия": "🇫🇮",
+  "Франция": "🇫🇷", "Чехия": "🇨🇿", "Швейцария": "🇨🇭",
+  "Швеция": "🇸🇪", "Япония": "🇯🇵", "Южная Корея": "🇰🇷",
   "Другая": "🌍",
 };
 
@@ -148,8 +122,10 @@ function AccountSkeleton({ index }: { index: number }) {
 
 export default function Catalog() {
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [otherProducts, setOtherProducts] = useState<OtherProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [balance, setBalance] = useState(0);
+  const [activeTab, setActiveTab] = useState<"telegram" | "other">("telegram");
   const user = getTelegramUser();
   const { toast } = useToast();
 
@@ -157,16 +133,19 @@ export default function Catalog() {
   const [topupAmount, setTopupAmount] = useState("100");
 
   useEffect(() => {
-    fetch("/api/accounts/available")
-      .then((r) => r.json())
-      .then((data) => {
-        setAccounts(data);
-        setIsLoading(false);
-      });
+    Promise.all([
+      fetch("/api/accounts/available").then(r => r.json()),
+      fetch("/api/other-products/available").then(r => r.json()),
+    ]).then(([accs, others]) => {
+      setAccounts(Array.isArray(accs) ? accs : []);
+      setOtherProducts(Array.isArray(others) ? others : []);
+      setIsLoading(false);
+    });
+
     if (user) {
       fetch(`/api/balance/${user.id}`)
-        .then((r) => r.json())
-        .then((data) => setBalance(data.balance ?? 0));
+        .then(r => r.json())
+        .then(data => setBalance(data.balance ?? 0));
     }
   }, [user]);
 
@@ -195,8 +174,8 @@ export default function Catalog() {
             if (status === "paid") {
               toast({ title: "Успешно", description: "Баланс пополнен" });
               fetch(`/api/balance/${user.id}`)
-                .then((r) => r.json())
-                .then((data) => setBalance(data.balance ?? 0));
+                .then(r => r.json())
+                .then(data => setBalance(data.balance ?? 0));
             } else if (status === "cancelled") {
               toast({ title: "Отменено", description: "Платёж отменён" });
             }
@@ -220,10 +199,9 @@ export default function Catalog() {
         <div className="flex items-center justify-between animate-fade-in-1">
           <div>
             <h1 className="text-xl font-bold tracking-tight">Каталог</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">Telegram аккаунты</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Все товары магазина</p>
           </div>
           <div className="flex items-center gap-2">
-            {/* Balance badge */}
             <div
               className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-bold"
               style={{
@@ -247,140 +225,239 @@ export default function Catalog() {
           </div>
         </div>
 
-        {/* Account list */}
+        {/* Tabs */}
+        <div
+          className="flex rounded-xl p-1 gap-1"
+          style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.15)" }}
+        >
+          <button
+            onClick={() => setActiveTab("telegram")}
+            className="flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all"
+            style={{
+              background: activeTab === "telegram" ? "linear-gradient(135deg,#7c3aed,#a855f7)" : "transparent",
+              color: activeTab === "telegram" ? "white" : undefined,
+              boxShadow: activeTab === "telegram" ? "0 2px 8px rgba(124,58,237,0.3)" : "none",
+            }}
+          >
+            ✈️ Telegram
+            {accounts.length > 0 && (
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
+                style={{
+                  background: activeTab === "telegram" ? "rgba(255,255,255,0.25)" : "rgba(168,85,247,0.2)",
+                }}
+              >
+                {accounts.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab("other")}
+            className="flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all"
+            style={{
+              background: activeTab === "other" ? "linear-gradient(135deg,#7c3aed,#a855f7)" : "transparent",
+              color: activeTab === "other" ? "white" : undefined,
+              boxShadow: activeTab === "other" ? "0 2px 8px rgba(124,58,237,0.3)" : "none",
+            }}
+          >
+            🌐 Прочие
+            {otherProducts.length > 0 && (
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
+                style={{
+                  background: activeTab === "other" ? "rgba(255,255,255,0.25)" : "rgba(168,85,247,0.2)",
+                }}
+              >
+                {otherProducts.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Lists */}
         <div className="flex flex-col gap-2.5">
           {isLoading ? (
-            Array.from({ length: 5 }).map((_, i) => (
-              <AccountSkeleton key={i} index={i} />
-            ))
-          ) : accounts.length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground">
-              <div className="text-4xl mb-3">📭</div>
-              <p className="text-sm font-medium">Аккаунтов пока нет</p>
-              <p className="text-xs mt-1 opacity-60">Загляните позже</p>
-            </div>
-          ) : (
-            accounts.map((acc, i) => {
-              const isFree = acc.isFree === "true" || acc.price === 0;
-              const hasAutoDelivery = !!(acc.lolzItemId || acc.sessionId);
-              const idLabel = getIdDigitLabel(acc.userId);
-              return (
-                <Link key={acc.id} href={`/account/${acc.id}`} className="block">
-                  <div
-                    className="card-press rounded-2xl p-4 transition-all duration-200 group"
-                    style={{
-                      background: "hsl(var(--card))",
-                      border: "1px solid rgba(168,85,247,0.12)",
-                      animationDelay: `${i * 0.04}s`,
-                    }}
-                    onMouseEnter={e => {
-                      (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(168,85,247,0.3)";
-                      (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 20px rgba(124,58,237,0.12)";
-                    }}
-                    onMouseLeave={e => {
-                      (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(168,85,247,0.12)";
-                      (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
-                    }}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        {/* Flag circle */}
-                        <div
-                          className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                          style={{ background: "rgba(168,85,247,0.08)" }}
-                        >
-                          {getFlag(acc.country)}
-                        </div>
-                        <div className="min-w-0 space-y-1">
-                          {/* Description on top */}
-                          {acc.description ? (
-                            <p className="text-sm font-semibold truncate">{acc.description}</p>
-                          ) : (
+            Array.from({ length: 4 }).map((_, i) => <AccountSkeleton key={i} index={i} />)
+          ) : activeTab === "telegram" ? (
+            accounts.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <div className="text-4xl mb-3">📭</div>
+                <p className="text-sm font-medium">Аккаунтов пока нет</p>
+                <p className="text-xs mt-1 opacity-60">Загляните позже</p>
+              </div>
+            ) : (
+              accounts.map((acc, i) => {
+                const isFree = acc.isFree === "true" || acc.price === 0;
+                const hasAutoDelivery = !!(acc.lolzItemId || acc.sessionId);
+                const idLabel = getIdDigitLabel(acc.userId);
+                return (
+                  <Link key={acc.id} href={`/account/${acc.id}`} className="block">
+                    <div
+                      className="card-press rounded-2xl p-4 transition-all duration-200"
+                      style={{
+                        background: "hsl(var(--card))",
+                        border: "1px solid rgba(168,85,247,0.12)",
+                        animationDelay: `${i * 0.04}s`,
+                      }}
+                      onMouseEnter={e => {
+                        (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(168,85,247,0.3)";
+                        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 20px rgba(124,58,237,0.12)";
+                      }}
+                      onMouseLeave={e => {
+                        (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(168,85,247,0.12)";
+                        (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div
+                            className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                            style={{ background: "rgba(168,85,247,0.08)" }}
+                          >
+                            {getFlag(acc.country)}
+                          </div>
+                          <div className="min-w-0 space-y-1">
+                            {acc.description ? (
+                              <p className="text-sm font-semibold truncate">{acc.description}</p>
+                            ) : (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-semibold text-sm truncate">{acc.country || "Неизвестно"}</span>
+                                {acc.hasPremium && <span className="badge-premium flex-shrink-0">Premium</span>}
+                                {isFree && <span className="badge-free flex-shrink-0">Free</span>}
+                              </div>
+                            )}
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-semibold text-sm truncate">{acc.country || "Неизвестно"}</span>
-                              {acc.hasPremium && (
-                                <span className="badge-premium flex-shrink-0">Premium</span>
+                              {acc.description && <span className="text-[11px] text-muted-foreground">{acc.country || "Неизвестно"}</span>}
+                              {acc.phonePrefix && <span className="text-[11px] text-muted-foreground font-mono">{acc.phonePrefix}****</span>}
+                              {acc.dcId && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: "rgba(168,85,247,0.1)", color: "hsl(262 83% 70%)" }}>
+                                  DC {acc.dcId}
+                                </span>
                               )}
-                              {isFree && (
-                                <span className="badge-free flex-shrink-0">Free</span>
+                              {idLabel && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: "rgba(99,102,241,0.1)", color: "hsl(239 84% 70%)" }}>
+                                  {idLabel}
+                                </span>
+                              )}
+                              {hasAutoDelivery && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: "rgba(16,185,129,0.1)", color: "hsl(160 84% 39%)" }}>
+                                  авто-выдача
+                                </span>
                               )}
                             </div>
-                          )}
-                          {/* Country + DC + ID + авто-выдача below */}
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {acc.description && (
-                              <span className="text-[11px] text-muted-foreground">{acc.country || "Неизвестно"}</span>
+                            {acc.description && (acc.hasPremium || isFree) && (
+                              <div className="flex items-center gap-1.5">
+                                {acc.hasPremium && <span className="badge-premium flex-shrink-0">Premium</span>}
+                                {isFree && <span className="badge-free flex-shrink-0">Free</span>}
+                              </div>
                             )}
-                            {acc.phonePrefix && (
-                              <span className="text-[11px] text-muted-foreground font-mono">{acc.phonePrefix}****</span>
-                            )}
-                            {acc.dcId && (
-                              <span
-                                className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
-                                style={{ background: "rgba(168,85,247,0.1)", color: "hsl(262 83% 70%)" }}
-                              >
-                                DC {acc.dcId}
-                              </span>
-                            )}
-                            {idLabel && (
-                              <span
-                                className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
-                                style={{ background: "rgba(99,102,241,0.1)", color: "hsl(239 84% 70%)" }}
-                              >
-                                {idLabel}
-                              </span>
-                            )}
-                            {hasAutoDelivery && (
-                              <span
-                                className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
-                                style={{ background: "rgba(16,185,129,0.1)", color: "hsl(160 84% 39%)" }}
-                              >
-                                авто-выдача
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                          <div className="font-bold text-sm">
+                            {isFree ? (
+                              <span className="text-emerald-400">Бесплатно</span>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                                <span>{acc.price}</span>
                               </span>
                             )}
                           </div>
-                          {/* badges when description exists */}
-                          {acc.description && (acc.hasPremium || isFree) && (
-                            <div className="flex items-center gap-1.5">
-                              {acc.hasPremium && <span className="badge-premium flex-shrink-0">Premium</span>}
-                              {isFree && <span className="badge-free flex-shrink-0">Free</span>}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Price + button */}
-                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                        <div className="font-bold text-sm">
-                          {isFree ? (
-                            <span className="text-emerald-400">Бесплатно</span>
-                          ) : (
-                            <span className="flex items-center gap-1">
-                              <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
-                              <span>{acc.price}</span>
-                            </span>
-                          )}
-                        </div>
-                        <div
-                          className="text-[11px] font-bold text-white px-3 py-1.5 rounded-xl flex items-center gap-1"
-                          style={{
-                            background: isFree
-                              ? "linear-gradient(135deg,#059669,#10b981)"
-                              : "linear-gradient(135deg,#7c3aed,#a855f7)",
-                            boxShadow: isFree
-                              ? "0 2px 8px rgba(5,150,105,0.3)"
-                              : "0 2px 8px rgba(124,58,237,0.3)",
-                          }}
-                        >
-                          {!isFree && <Zap className="w-3 h-3" />}
-                          {isFree ? "Получить" : "Купить"}
+                          <div
+                            className="text-[11px] font-bold text-white px-3 py-1.5 rounded-xl flex items-center gap-1"
+                            style={{
+                              background: isFree ? "linear-gradient(135deg,#059669,#10b981)" : "linear-gradient(135deg,#7c3aed,#a855f7)",
+                              boxShadow: isFree ? "0 2px 8px rgba(5,150,105,0.3)" : "0 2px 8px rgba(124,58,237,0.3)",
+                            }}
+                          >
+                            {!isFree && <Zap className="w-3 h-3" />}
+                            {isFree ? "Получить" : "Купить"}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
-              );
-            })
+                  </Link>
+                );
+              })
+            )
+          ) : (
+            // Other products tab
+            otherProducts.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <div className="text-4xl mb-3">📭</div>
+                <p className="text-sm font-medium">Товаров пока нет</p>
+                <p className="text-xs mt-1 opacity-60">Загляните позже</p>
+              </div>
+            ) : (
+              otherProducts.map((product, i) => {
+                const isFree = product.isFree === "true" || product.price === 0;
+                const sn = getSocialNetwork(product.socialNetwork);
+                return (
+                  <Link key={product.id} href={`/other/${product.id}`} className="block">
+                    <div
+                      className="card-press rounded-2xl p-4 transition-all duration-200"
+                      style={{
+                        background: "hsl(var(--card))",
+                        border: "1px solid rgba(168,85,247,0.12)",
+                        animationDelay: `${i * 0.04}s`,
+                      }}
+                      onMouseEnter={e => {
+                        (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(168,85,247,0.3)";
+                        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 20px rgba(124,58,237,0.12)";
+                      }}
+                      onMouseLeave={e => {
+                        (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(168,85,247,0.12)";
+                        (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div
+                            className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                            style={{ background: "rgba(168,85,247,0.08)" }}
+                          >
+                            {sn.emoji}
+                          </div>
+                          <div className="min-w-0 space-y-1">
+                            {product.description ? (
+                              <p className="text-sm font-semibold truncate">{product.description}</p>
+                            ) : (
+                              <p className="text-sm font-semibold">{sn.name}</p>
+                            )}
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] text-muted-foreground">{sn.name}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                          <div className="font-bold text-sm">
+                            {isFree ? (
+                              <span className="text-emerald-400">Бесплатно</span>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                                <span>{product.price}</span>
+                              </span>
+                            )}
+                          </div>
+                          <div
+                            className="text-[11px] font-bold text-white px-3 py-1.5 rounded-xl flex items-center gap-1"
+                            style={{
+                              background: isFree ? "linear-gradient(135deg,#059669,#10b981)" : "linear-gradient(135deg,#7c3aed,#a855f7)",
+                              boxShadow: isFree ? "0 2px 8px rgba(5,150,105,0.3)" : "0 2px 8px rgba(124,58,237,0.3)",
+                            }}
+                          >
+                            {!isFree && <Zap className="w-3 h-3" />}
+                            {isFree ? "Получить" : "Купить"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })
+            )
           )}
         </div>
       </div>
@@ -400,24 +477,20 @@ export default function Catalog() {
               <Input
                 type="number"
                 value={topupAmount}
-                onChange={(e) => setTopupAmount(e.target.value)}
+                onChange={e => setTopupAmount(e.target.value)}
                 min={1}
                 placeholder="100"
                 className="rounded-xl"
               />
             </div>
             <div className="grid grid-cols-4 gap-2">
-              {[50, 100, 250, 500].map((amt) => (
+              {[50, 100, 250, 500].map(amt => (
                 <button
                   key={amt}
                   className="rounded-xl py-2 text-xs font-semibold transition-all"
                   style={{
-                    background: topupAmount === String(amt)
-                      ? "linear-gradient(135deg,#7c3aed,#a855f7)"
-                      : "rgba(168,85,247,0.08)",
-                    border: topupAmount === String(amt)
-                      ? "1px solid rgba(168,85,247,0.5)"
-                      : "1px solid rgba(168,85,247,0.15)",
+                    background: topupAmount === String(amt) ? "linear-gradient(135deg,#7c3aed,#a855f7)" : "rgba(168,85,247,0.08)",
+                    border: topupAmount === String(amt) ? "1px solid rgba(168,85,247,0.5)" : "1px solid rgba(168,85,247,0.15)",
                     color: topupAmount === String(amt) ? "white" : undefined,
                   }}
                   onClick={() => setTopupAmount(String(amt))}

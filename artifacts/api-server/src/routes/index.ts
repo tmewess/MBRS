@@ -11,6 +11,7 @@ import sessionsRouter from "./sessions";
 import newsRouter from "./news";
 import adminsRouter from "./admins";
 import proxiesRouter from "./proxies";
+import otherProductsRouter from "./other-products";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(sessionsRouter);
 router.use(newsRouter);
 router.use(adminsRouter);
 router.use(proxiesRouter);
+router.use(otherProductsRouter);
 
 export default router;

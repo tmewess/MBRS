@@ -7,3 +7,4 @@ export * from "./news";
 export * from "./admins";
 export * from "./users";
 export * from "./proxies";
+export * from "./other_products";
