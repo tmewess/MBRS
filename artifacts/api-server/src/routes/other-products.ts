@@ -116,6 +116,7 @@ router.post("/other-products/:id/purchase", async (req, res): Promise<void> => {
     const [order] = await db.insert(ordersTable).values({
       telegramUserId,
       telegramUsername: telegramUsername ?? null,
+      otherProductId: id,
       status: "delivered",
       paymentMethod: isFree ? "free" : "balance",
       amount: isFree ? 0 : product.price,

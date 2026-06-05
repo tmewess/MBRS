@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getTelegramUser } from "@/lib/telegram";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, ArrowLeft, Star, Shield } from "lucide-react";
-import { getSocialNetwork } from "@/lib/social-networks";
+import { getSocialNetwork, getSocialIconSvg } from "@/lib/social-networks";
 import { Confetti } from "@/components/confetti";
 
 interface OtherProduct {
@@ -56,13 +56,11 @@ export default function OtherProductDetail() {
   const handleBuy = async () => {
     if (!user) { toast({ title: "Ошибка", description: "Откройте в Telegram", variant: "destructive" }); return; }
     if (!product) return;
-
     const isFree = product.isFree === "true" || product.price === 0;
     if (!isFree && balance < product.price) {
       toast({ title: "Недостаточно Stars", description: `Нужно: ${product.price}, у вас: ${balance}`, variant: "destructive" });
       return;
     }
-
     setIsBuying(true);
     const res = await fetch(`/api/other-products/${product.id}/purchase`, {
       method: "POST",
@@ -97,6 +95,7 @@ export default function OtherProductDetail() {
   }
 
   const sn = getSocialNetwork(product.socialNetwork);
+  const svgIcon = getSocialIconSvg(product.socialNetwork);
   const isFree = product.isFree === "true" || product.price === 0;
 
   // After purchase view
@@ -106,7 +105,7 @@ export default function OtherProductDetail() {
         <div className="min-h-[100dvh] w-full flex flex-col bg-background text-foreground">
           <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur">
             <div className="flex h-14 items-center px-4 gap-3">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setLocation("/")}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 active:scale-90 transition-transform duration-100" onClick={() => setLocation("/")}>
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <span className="font-semibold text-lg">Данные товара</span>
@@ -115,10 +114,14 @@ export default function OtherProductDetail() {
 
           <main className="flex-1 overflow-y-auto p-4 space-y-4">
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-2xl">{sn.emoji}</span>
+              <div
+                className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                style={{ background: sn.bgColor }}
+                dangerouslySetInnerHTML={{ __html: `<div style="width:26px;height:26px">${svgIcon}</div>` }}
+              />
               <div>
                 <div className="font-semibold">{sn.name}</div>
-                <div className="text-xs text-muted-foreground">Покупка успешна ✓</div>
+                <div className="text-xs text-green-400">Покупка успешна ✓</div>
               </div>
             </div>
 
@@ -137,7 +140,7 @@ export default function OtherProductDetail() {
                     <label className="text-xs text-muted-foreground">Логин:</label>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 bg-muted/60 rounded-lg px-3 py-2.5 text-sm font-mono">{purchased.login}</div>
-                      <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => handleCopy(purchased.login!, "Логин")}>
+                      <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 active:scale-90 transition-transform duration-100" onClick={() => handleCopy(purchased.login!, "Логин")}>
                         <Copy className="w-4 h-4" />
                       </Button>
                     </div>
@@ -148,7 +151,7 @@ export default function OtherProductDetail() {
                     <label className="text-xs text-muted-foreground">Пароль:</label>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 bg-muted/60 rounded-lg px-3 py-2.5 text-sm font-mono">{purchased.password}</div>
-                      <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => handleCopy(purchased.password!, "Пароль")}>
+                      <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 active:scale-90 transition-transform duration-100" onClick={() => handleCopy(purchased.password!, "Пароль")}>
                         <Copy className="w-4 h-4" />
                       </Button>
                     </div>
@@ -159,7 +162,7 @@ export default function OtherProductDetail() {
                     <label className="text-xs text-muted-foreground">Почта:</label>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 bg-muted/60 rounded-lg px-3 py-2.5 text-sm font-mono">{purchased.email}</div>
-                      <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => handleCopy(purchased.email!, "Почта")}>
+                      <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 active:scale-90 transition-transform duration-100" onClick={() => handleCopy(purchased.email!, "Почта")}>
                         <Copy className="w-4 h-4" />
                       </Button>
                     </div>
@@ -170,7 +173,7 @@ export default function OtherProductDetail() {
                     <label className="text-xs text-muted-foreground">Пароль от почты:</label>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 bg-muted/60 rounded-lg px-3 py-2.5 text-sm font-mono">{purchased.emailPassword}</div>
-                      <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => handleCopy(purchased.emailPassword!, "Пароль от почты")}>
+                      <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 active:scale-90 transition-transform duration-100" onClick={() => handleCopy(purchased.emailPassword!, "Пароль от почты")}>
                         <Copy className="w-4 h-4" />
                       </Button>
                     </div>
@@ -181,7 +184,7 @@ export default function OtherProductDetail() {
 
             {purchased.deliveryDescription && (
               <Card className="p-4 bg-card/80 border-border/40">
-                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Описание после покупки</div>
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Инструкции</div>
                 <p className="text-sm whitespace-pre-wrap">{purchased.deliveryDescription}</p>
               </Card>
             )}
@@ -197,7 +200,7 @@ export default function OtherProductDetail() {
     <div className="min-h-[100dvh] w-full flex flex-col bg-background text-foreground pb-24">
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur">
         <div className="flex h-14 items-center px-4 gap-3">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setLocation("/")}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 active:scale-90 transition-transform duration-100" onClick={() => setLocation("/")}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <span className="font-semibold text-lg">Товар</span>
@@ -206,7 +209,11 @@ export default function OtherProductDetail() {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <div className="flex items-center gap-3">
-          <span className="text-3xl">{sn.emoji}</span>
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+            style={{ background: sn.bgColor, boxShadow: `0 4px 16px ${sn.bgColor}55` }}
+            dangerouslySetInnerHTML={{ __html: `<div style="width:30px;height:30px">${svgIcon}</div>` }}
+          />
           <div>
             <h1 className="text-xl font-bold">{sn.name}</h1>
             <div className="text-base font-medium mt-0.5">
@@ -239,7 +246,7 @@ export default function OtherProductDetail() {
 
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur border-t border-border/50 z-10">
         <Button
-          className="w-full h-12 text-base font-semibold"
+          className="w-full h-12 text-base font-semibold active:scale-95 transition-transform duration-100"
           onClick={handleBuy}
           disabled={isBuying || product.status !== "available"}
         >

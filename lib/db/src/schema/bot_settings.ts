@@ -16,6 +16,10 @@ export const botSettingsTable = pgTable("bot_settings", {
   lolzApiKey: text("lolz_api_key"),
   tgApiId: text("tg_api_id"),
   tgApiHash: text("tg_api_hash"),
+  requireSubscription: boolean("require_subscription").notNull().default(false),
+  subscriptionChannel: text("subscription_channel"),
+  maintenanceMode: boolean("maintenance_mode").notNull().default(false),
+  maintenanceMessage: text("maintenance_message").notNull().default("🔧 Технические работы. Скоро вернёмся!"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
-import { db, userBalancesTable, accountsTable, ordersTable } from "@workspace/db";
+import { db, userBalancesTable, accountsTable, ordersTable, botSettingsTable } from "@workspace/db";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -30,6 +31,32 @@ async function createTelegramInvoiceLink(params: {
   });
   const data = await res.json() as { ok: boolean; result?: string; description?: string };
   if (!data.ok) throw new Error(data.description ?? "Failed to create invoice link");
+  return data.result!;
+}
+
+async function createCryptoBotInvoice(token: string, params: {
+  amount: string;
+  currency_type: string;
+  fiat?: string;
+  payload: string;
+}) {
+  const res = await fetch("https://pay.crypt.bot/api/createInvoice", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Crypto-Pay-API-Token": token,
+    },
+    body: JSON.stringify({
+      currency_type: params.currency_type,
+      fiat: params.fiat,
+      amount: params.amount,
+      payload: params.payload,
+      allow_comments: false,
+      allow_anonymous: false,
+    }),
+  });
+  const data = await res.json() as { ok: boolean; result?: { invoice_id: number; bot_invoice_url: string; mini_app_invoice_url?: string }; error?: { name: string; code: number } };
+  if (!data.ok) throw new Error(data.error?.name ?? "Failed to create Crypto Bot invoice");
   return data.result!;
 }
 
@@ -72,6 +99,83 @@ router.post("/balance/topup-invoice", async (req, res): Promise<void> => {
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Failed to create invoice";
     res.status(503).json({ error: message });
+  }
+});
+
+router.post("/balance/crypto-topup", async (req, res): Promise<void> => {
+  const { telegramUserId, amount } = req.body as { telegramUserId?: string; amount?: number };
+  if (!telegramUserId || !amount || amount < 1) {
+    res.status(400).json({ error: "Сумма обязательна (минимум 1)" });
+    return;
+  }
+  try {
+    const [settings] = await db.select().from(botSettingsTable).limit(1);
+    const cryptoToken = settings?.cryptoBotToken;
+    if (!cryptoToken) {
+      res.status(503).json({ error: "Crypto Bot не настроен. Укажите токен в Настройках панели." });
+      return;
+    }
+    const payload = JSON.stringify({ type: "crypto_topup", telegramUserId, stars: amount });
+    const invoice = await createCryptoBotInvoice(cryptoToken, {
+      currency_type: "fiat",
+      fiat: "RUB",
+      amount: (amount * 0.5).toFixed(2),
+      payload,
+    });
+    res.json({ success: true, invoiceUrl: invoice.mini_app_invoice_url ?? invoice.bot_invoice_url, invoiceId: invoice.invoice_id });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Failed to create Crypto Bot invoice";
+    logger.error({ err: e }, "crypto-topup failed");
+    res.status(503).json({ error: message });
+  }
+});
+
+router.post("/balance/crypto-webhook", async (req, res): Promise<void> => {
+  try {
+    const [settings] = await db.select().from(botSettingsTable).limit(1);
+    const cryptoToken = settings?.cryptoBotToken;
+
+    const secret = req.headers["crypto-pay-api-token"] as string | undefined;
+    if (!secret || secret !== cryptoToken) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const body = req.body as { update_type?: string; payload?: { invoice?: { status?: string; payload?: string } } };
+    if (body.update_type !== "invoice_paid") {
+      res.json({ ok: true });
+      return;
+    }
+
+    const invoice = body.payload?.invoice;
+    if (!invoice || invoice.status !== "paid" || !invoice.payload) {
+      res.json({ ok: true });
+      return;
+    }
+
+    let data: { type?: string; telegramUserId?: string; stars?: number } = {};
+    try { data = JSON.parse(invoice.payload); } catch { res.json({ ok: true }); return; }
+
+    if (data.type !== "crypto_topup" || !data.telegramUserId || !data.stars) {
+      res.json({ ok: true });
+      return;
+    }
+
+    const { telegramUserId, stars } = data;
+    const [existing] = await db.select().from(userBalancesTable).where(eq(userBalancesTable.telegramUserId, telegramUserId));
+    if (existing) {
+      await db.update(userBalancesTable)
+        .set({ balance: existing.balance + stars, updatedAt: new Date() })
+        .where(eq(userBalancesTable.telegramUserId, telegramUserId));
+    } else {
+      await db.insert(userBalancesTable).values({ telegramUserId, balance: stars });
+    }
+
+    logger.info({ telegramUserId, stars }, "Crypto Bot payment credited");
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "crypto-webhook error");
+    res.status(500).json({ error: "Internal error" });
   }
 });
 

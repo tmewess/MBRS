@@ -6,33 +6,57 @@ import { TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
 import { logger } from "../lib/logger";
 import { fetchLolzConfirmCode, fetchLolzAccountData, downloadLolzFile, resetLolzSessions } from "../routes/lolz";
+import { getNextProxy, buildProxyConfig } from "../lib/proxy-manager";
 
 let bot: Bot | null = null;
 
-const REQUIRED_CHANNEL_ID = -1003111702928;
 const CHANNEL_INVITE_URL = "https://t.me/+fGDqJGbue980ODJl";
 
-async function isSubscribed(userId: number): Promise<boolean> {
-  return true;
+async function isSubscribed(userId: number, channelUsername: string): Promise<boolean> {
+  if (!bot) return true;
+  try {
+    const member = await bot.api.getChatMember(channelUsername.startsWith("@") ? channelUsername : `@${channelUsername}`, userId);
+    return ["member", "administrator", "creator"].includes(member.status);
+  } catch {
+    return true;
+  }
 }
 
 async function requireSubscription(ctx: any, next: () => Promise<void>): Promise<void> {
   if (!ctx.from) { await next(); return; }
   if (await isAdmin(ctx.from.id)) { await next(); return; }
-  const ok = await isSubscribed(ctx.from.id);
-  if (ok) { await next(); return; }
-  const kb = new InlineKeyboard().url("📢 Подписаться на канал", CHANNEL_INVITE_URL);
-  try {
-    await ctx.reply(
-      "⚠️ *Для использования бота необходима подписка на наш канал.*\n\nПодпишитесь и нажмите /start снова.",
-      { parse_mode: "Markdown", reply_markup: kb }
-    );
-  } catch {}
+
+  const settings = await getBotSettings();
+
+  if (settings.maintenanceMode) {
+    try {
+      await ctx.reply(settings.maintenanceMessage || "🔧 Технические работы. Скоро вернёмся!");
+    } catch {}
+    return;
+  }
+
+  if (settings.requireSubscription && settings.subscriptionChannel) {
+    const ok = await isSubscribed(ctx.from.id, settings.subscriptionChannel);
+    if (!ok) {
+      const channelLink = settings.subscriptionChannel.startsWith("http")
+        ? settings.subscriptionChannel
+        : `https://t.me/${settings.subscriptionChannel.replace("@", "")}`;
+      const kb = new InlineKeyboard().url("📢 Подписаться на канал", channelLink);
+      try {
+        await ctx.reply(
+          "⚠️ *Для использования бота необходима подписка на наш канал.*\n\nПодпишитесь и нажмите /start снова.",
+          { parse_mode: "Markdown", reply_markup: kb }
+        );
+      } catch {}
+      return;
+    }
+  }
+
+  await next();
 }
 
 function getShopUrl(): string {
   if (process.env["SHOP_URL"]) return process.env["SHOP_URL"];
-  // Prefer dev domain — it always routes through the live proxy (both in dev and production on Replit)
   const domain = process.env["REPLIT_DEV_DOMAIN"] ?? process.env["REPLIT_DOMAINS"]?.split(",")[0];
   if (domain) return `https://${domain}/tg-shop/`;
   logger.warn("SHOP_URL not set and no Replit domain found — bot buttons will use placeholder URL");
@@ -320,7 +344,7 @@ export async function startBot() {
       }
       await ctx.reply(`Готово! Возврат Stars для заказа #${orderId} выполнен.`);
       try {
-        await ctx.api.sendMessage(parseInt(order.telegramUserId, 10), `* Возврат  Stars*\n\nПо заказу #${orderId} выполнен возврат Stars ${order.amount} Stars.`, { parse_mode: "Markdown" });
+        await ctx.api.sendMessage(parseInt(order.telegramUserId, 10), `*Возврат Stars*\n\nПо заказу #${orderId} выполнен возврат ${order.amount} Stars.`, { parse_mode: "Markdown" });
       } catch {}
     } catch (err) {
       logger.error({ err }, "Refund failed");
@@ -365,7 +389,11 @@ export async function startBot() {
           return;
         }
 
-        const client = new TelegramClient(new StringSession(session.sessionString), apiId, apiHash, { connectionRetries: 2 });
+        const proxy = await getNextProxy();
+        const client = new TelegramClient(new StringSession(session.sessionString), apiId, apiHash, {
+          connectionRetries: 2,
+          ...(proxy ? { proxy: buildProxyConfig(proxy) } : {}),
+        });
         await client.connect();
 
         const messages = await client.getMessages(777000, { limit: 10 }) as any[];

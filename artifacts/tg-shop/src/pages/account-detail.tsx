@@ -40,7 +40,6 @@ const COUNTRY_FLAGS: Record<string, string> = {
   "Беларусь": "🇧🇾", "Польша": "🇵🇱", "Германия": "🇩🇪", "Франция": "🇫🇷",
   "Италия": "🇮🇹", "Турция": "🇹🇷", "Индия": "🇮🇳", "Китай": "🇨🇳",
   "Япония": "🇯🇵", "Бразилия": "🇧🇷", "Аргентина": "🇦🇷",
-  "Соединенные Штаты": "🇺🇸", "United States": "🇺🇸",
   "Индонезия": "🇮🇩", "Пакистан": "🇵🇰", "Бангладеш": "🇧🇩",
   "Нигерия": "🇳🇬", "Великобритания": "🇬🇧", "Вьетнам": "🇻🇳",
   "Таиланд": "🇹🇭", "Филиппины": "🇵🇭", "Иран": "🇮🇷",
@@ -176,7 +175,6 @@ export default function AccountDetail() {
     }
   };
 
-
   if (isLoading) {
     return (
       <Layout>
@@ -197,7 +195,6 @@ export default function AccountDetail() {
     );
   }
 
-  // Full-screen delivery view after purchase
   if (order) {
     const acc = order.account;
     const hasApiIntegration = !!(acc.lolzItemId) || !!(acc.sessionId);
@@ -233,7 +230,7 @@ export default function AccountDetail() {
                 <label className="text-xs text-muted-foreground">Номер телефона:</label>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 bg-muted/60 rounded-lg px-3 py-2.5 text-sm font-mono">{acc.phone}</div>
-                  <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => handleCopy(acc.phone!, "Номер")}>
+                  <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 active:scale-90 transition-transform duration-100" onClick={() => handleCopy(acc.phone!, "Номер")}>
                     <Copy className="w-4 h-4" />
                   </Button>
                 </div>
@@ -245,20 +242,19 @@ export default function AccountDetail() {
                 <label className="text-xs text-muted-foreground">ID аккаунта:</label>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 bg-muted/60 rounded-lg px-3 py-2.5 text-sm font-mono">{acc.userId}</div>
-                  <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => handleCopy(acc.userId!, "ID")}>
+                  <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 active:scale-90 transition-transform duration-100" onClick={() => handleCopy(acc.userId!, "ID")}>
                     <Copy className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
             )}
 
-            {/* DC moved to position of AuthKey (3rd) */}
             {acc.dcId && (
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">DC:</label>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 bg-muted/60 rounded-lg px-3 py-2.5 text-sm font-mono">{acc.dcId}</div>
-                  <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => handleCopy(acc.dcId!, "DC")}>
+                  <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 active:scale-90 transition-transform duration-100" onClick={() => handleCopy(acc.dcId!, "DC")}>
                     <Copy className="w-4 h-4" />
                   </Button>
                 </div>
@@ -270,20 +266,19 @@ export default function AccountDetail() {
                 <label className="text-xs text-muted-foreground">Пароль 2FA:</label>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 bg-muted/60 rounded-lg px-3 py-2.5 text-sm font-mono">{acc.password}</div>
-                  <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => handleCopy(acc.password!, "Пароль")}>
+                  <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 active:scale-90 transition-transform duration-100" onClick={() => handleCopy(acc.password!, "Пароль")}>
                     <Copy className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
             )}
 
-            {/* AuthKey moved to bottom */}
             {acc.authKey && (
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Auth Key:</label>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 bg-muted/60 rounded-lg px-3 py-2.5 text-xs font-mono truncate">{acc.authKey.slice(0, 24)}...{acc.authKey.slice(-8)}</div>
-                  <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => handleCopy(acc.authKey!, "Auth Key")}>
+                  <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 active:scale-90 transition-transform duration-100" onClick={() => handleCopy(acc.authKey!, "Auth Key")}>
                     <Copy className="w-4 h-4" />
                   </Button>
                 </div>
@@ -293,7 +288,7 @@ export default function AccountDetail() {
             <div className="relative">
               <Button
                 variant="outline"
-                className="w-full h-10 text-sm"
+                className="w-full h-10 text-sm active:scale-95 transition-transform duration-100"
                 onClick={() => setShowCopyDropdown(!showCopyDropdown)}
               >
                 Скопировать данные
@@ -323,7 +318,7 @@ export default function AccountDetail() {
             <Card className="p-4 space-y-3 bg-card/80 border-border/40">
               <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Скачать:</div>
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" className="h-8 text-xs bg-primary/10 border-primary/20 text-primary hover:bg-primary/20" onClick={handleDownload}>
+                <Button size="sm" variant="outline" className="h-8 text-xs bg-primary/10 border-primary/20 text-primary hover:bg-primary/20 active:scale-95 transition-transform duration-100" onClick={handleDownload}>
                   <Download className="w-3 h-3 mr-1" />
                   TData
                 </Button>
@@ -335,10 +330,10 @@ export default function AccountDetail() {
             <Card className="p-4 space-y-3 bg-card/80 border-border/40">
               <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Получить код для входа в Telegram</div>
               <div className="flex gap-2">
-                <Button className="flex-1 h-10 text-sm bg-green-600 hover:bg-green-700 text-white" onClick={() => setShowCodeModal(true)}>
+                <Button className="flex-1 h-10 text-sm bg-green-600 hover:bg-green-700 text-white active:scale-95 transition-transform duration-100" onClick={() => setShowCodeModal(true)}>
                   Получить код
                 </Button>
-                <Button variant="outline" className="flex-1 h-10 text-sm" onClick={handleResetSessions}>
+                <Button variant="outline" className="flex-1 h-10 text-sm active:scale-95 transition-transform duration-100" onClick={handleResetSessions}>
                   <RotateCcw className="w-3.5 h-3.5 mr-1" />
                   Сбросить сессии
                 </Button>
@@ -366,10 +361,9 @@ export default function AccountDetail() {
 
   return (
     <div className="min-h-[100dvh] w-full flex flex-col bg-background text-foreground pb-24">
-      {/* Back header */}
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-14 items-center px-4 gap-3">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setLocation("/")}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 active:scale-90 transition-transform duration-100" onClick={() => setLocation("/")}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <span className="font-semibold tracking-tight text-lg">Аккаунт</span>
@@ -410,17 +404,16 @@ export default function AccountDetail() {
           </div>
         )}
 
-        {/* Достоверная информация */}
+        {/* Info card without description and without lastActivity */}
         <Card className="p-4 bg-card/80 border-border/40">
           <h3 className="text-sm font-semibold mb-3">Достоверная информация</h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-3">
             <InfoRow label="Страна" value={account.country || "--"} />
-            <InfoRow label="Последняя активность" value={account.lastActivity || "--"} />
             <InfoRow label="Telegram Premium" value={account.hasPremium ? "Да" : "Нет"} />
-            <InfoRow label="Есть пароль на аккаунте" value={account.hasPassword ? "Да" : "Нет"} />
+            <InfoRow label="Защита 2FA" value={account.hasPassword ? "Установлен" : "Нет"} />
             <InfoRow label="Спамблок" value={spamLabel} />
             {account.origin && (
-              <InfoRow label="Происхождение аккаунта" value={account.origin} />
+              <InfoRow label="Происхождение" value={account.origin} />
             )}
             {account.registrationDate && (
               <InfoRow label="Дата регистрации" value={account.registrationDate} />
@@ -438,7 +431,7 @@ export default function AccountDetail() {
 
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur border-t border-border/50 z-10">
         <Button
-          className="w-full h-12 text-base font-semibold"
+          className="w-full h-12 text-base font-semibold active:scale-95 transition-transform duration-100"
           onClick={handleBuy}
           disabled={isBuying || account.status !== "available"}
         >

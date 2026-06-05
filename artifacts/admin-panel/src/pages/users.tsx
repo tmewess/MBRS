@@ -17,10 +17,13 @@ interface UserRow {
   orderCount: number;
 }
 
+type DialogMode = "add" | "subtract";
+
 export default function UsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
+  const [dialogMode, setDialogMode] = useState<DialogMode>("add");
   const [balanceAmount, setBalanceAmount] = useState("100");
   const { toast } = useToast();
 
@@ -58,6 +61,23 @@ export default function UsersPage() {
     } catch {
       toast({ title: "Ошибка", description: "Не удалось обновить баланс", variant: "destructive" });
     }
+  };
+
+  const openDialog = (user: UserRow, mode: DialogMode) => {
+    setSelectedUser(user);
+    setDialogMode(mode);
+    setBalanceAmount("100");
+  };
+
+  const handleConfirmBalance = () => {
+    if (!selectedUser) return;
+    const amount = parseInt(balanceAmount) || 0;
+    if (amount <= 0) {
+      toast({ title: "Ошибка", description: "Введите положительное число", variant: "destructive" });
+      return;
+    }
+    const delta = dialogMode === "add" ? amount : -amount;
+    handleUpdateBalance(selectedUser.telegramUserId, delta);
   };
 
   const handleBan = async (telegramUserId: string) => {
@@ -122,7 +142,7 @@ export default function UsersPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-green-500"
-                          onClick={() => setSelectedUser(u)}
+                          onClick={() => openDialog(u, "add")}
                         >
                           <Plus className="w-4 h-4" />
                         </Button>
@@ -130,7 +150,7 @@ export default function UsersPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-orange-500"
-                          onClick={() => handleUpdateBalance(u.telegramUserId, -100)}
+                          onClick={() => openDialog(u, "subtract")}
                         >
                           <Minus className="w-4 h-4" />
                         </Button>
@@ -156,44 +176,39 @@ export default function UsersPage() {
       <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Изменить баланс</DialogTitle>
+            <DialogTitle>{dialogMode === "add" ? "Выдать Stars" : "Забрать Stars"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Label>Пользователь</Label>
               <div className="font-mono text-sm text-muted-foreground">{selectedUser?.telegramUserId}</div>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Label>Текущий баланс</Label>
               <div className="font-semibold">{selectedUser?.balance} Stars</div>
             </div>
             <div className="space-y-2">
-              <Label>Сумма</Label>
+              <Label>Сумма (Stars)</Label>
               <Input
                 type="number"
                 value={balanceAmount}
                 onChange={(e) => setBalanceAmount(e.target.value)}
                 placeholder="100"
+                min="1"
+                autoFocus
               />
             </div>
-            <div className="flex gap-2">
-              <Button
-                className="flex-1"
-                variant="default"
-                onClick={() => selectedUser && handleUpdateBalance(selectedUser.telegramUserId, parseInt(balanceAmount) || 0)}
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Выдать
-              </Button>
-              <Button
-                className="flex-1"
-                variant="outline"
-                onClick={() => selectedUser && handleUpdateBalance(selectedUser.telegramUserId, -(parseInt(balanceAmount) || 0))}
-              >
-                <Minus className="w-4 h-4 mr-1" />
-                Забрать
-              </Button>
-            </div>
+            <Button
+              className="w-full"
+              variant={dialogMode === "add" ? "default" : "destructive"}
+              onClick={handleConfirmBalance}
+            >
+              {dialogMode === "add" ? (
+                <><Plus className="w-4 h-4 mr-1" /> Выдать {balanceAmount || "?"} Stars</>
+              ) : (
+                <><Minus className="w-4 h-4 mr-1" /> Забрать {balanceAmount || "?"} Stars</>
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

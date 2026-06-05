@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/layout";
-import { Plus, Star, Zap } from "lucide-react";
+import { Plus, Star } from "lucide-react";
 import { getTelegramUser } from "@/lib/telegram";
 import { useToast } from "@/hooks/use-toast";
-import { getSocialNetwork } from "@/lib/social-networks";
+import { getSocialNetwork, getSocialIconSvg } from "@/lib/social-networks";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +26,7 @@ interface Account {
   price: number;
   isFree: string;
   hasPremium: boolean;
+  hasPassword: boolean;
   filePath: string | null;
   fileName: string | null;
   createdAt: string;
@@ -52,32 +52,32 @@ interface OtherProduct {
 const COUNTRY_FLAGS: Record<string, string> = {
   "Австралия": "🇦🇺", "Австрия": "🇦🇹", "Азербайджан": "🇦🇿",
   "Албания": "🇦🇱", "Алжир": "🇩🇿", "Ангола": "🇦🇴",
-  "Андорра": "🇦🇩", "Антигуа и Барбуда": "🇦🇬", "Аргентина": "🇦🇷",
-  "Армения": "🇦🇲", "Афганистан": "🇦🇫", "Багамы": "🇧🇸",
-  "Бангладеш": "🇧🇩", "Барбадос": "🇧🇧", "Бахрейн": "🇧🇭",
-  "Беларусь": "🇧🇾", "Белиз": "🇧🇿", "Бельгия": "🇧🇪",
-  "Бенин": "🇧🇯", "Болгария": "🇧🇬", "Боливия": "🇧🇴",
-  "Босния и Герцеговина": "🇧🇦", "Ботсвана": "🇧🇼", "Бразилия": "🇧🇷",
-  "Бруней": "🇧🇳", "Буркина-Фасо": "🇧🇫", "Бурунди": "🇧🇮",
-  "Бутан": "🇧🇹", "Великобритания": "🇬🇧", "Венгрия": "🇭🇺",
-  "Венесуэла": "🇻🇪", "Вьетнам": "🇻🇳", "Германия": "🇩🇪",
-  "Греция": "🇬🇷", "Грузия": "🇬🇪", "Дания": "🇩🇰",
-  "Египет": "🇪🇬", "Израиль": "🇮🇱", "Индия": "🇮🇳",
-  "Индонезия": "🇮🇩", "Иордания": "🇯🇴", "Ирак": "🇮🇶",
-  "Иран": "🇮🇷", "Ирландия": "🇮🇪", "Испания": "🇪🇸",
-  "Италия": "🇮🇹", "Казахстан": "🇰🇿", "Канада": "🇨🇦",
+  "Аргентина": "🇦🇷", "Армения": "🇦🇲", "Афганистан": "🇦🇫",
+  "Багамы": "🇧🇸", "Бангладеш": "🇧🇩", "Беларусь": "🇧🇾",
+  "Бельгия": "🇧🇪", "Болгария": "🇧🇬", "Боливия": "🇧🇴",
+  "Бразилия": "🇧🇷", "Бруней": "🇧🇳", "Великобритания": "🇬🇧",
+  "Венгрия": "🇭🇺", "Венесуэла": "🇻🇪", "Вьетнам": "🇻🇳",
+  "Германия": "🇩🇪", "Греция": "🇬🇷", "Грузия": "🇬🇪",
+  "Дания": "🇩🇰", "Египет": "🇪🇬", "Израиль": "🇮🇱",
+  "Индия": "🇮🇳", "Индонезия": "🇮🇩", "Иордания": "🇯🇴",
+  "Ирак": "🇮🇶", "Иран": "🇮🇷", "Ирландия": "🇮🇪",
+  "Испания": "🇪🇸", "Италия": "🇮🇹", "Казахстан": "🇰🇿",
+  "Камерун": "🇨🇲", "Канада": "🇨🇦", "Кения": "🇰🇪",
   "Китай": "🇨🇳", "Колумбия": "🇨🇴", "Кыргызстан": "🇰🇬",
-  "Латвия": "🇱🇻", "Литва": "🇱🇹", "Мексика": "🇲🇽",
+  "Латвия": "🇱🇻", "Литва": "🇱🇹", "Ливан": "🇱🇧",
+  "Малайзия": "🇲🇾", "Марокко": "🇲🇦", "Мексика": "🇲🇽",
   "Молдова": "🇲🇩", "Монголия": "🇲🇳", "Нидерланды": "🇳🇱",
-  "Норвегия": "🇳🇴", "ОАЭ": "🇦🇪", "Пакистан": "🇵🇰",
-  "Польша": "🇵🇱", "Португалия": "🇵🇹", "Россия": "🇷🇺",
-  "Румыния": "🇷🇴", "Саудовская Аравия": "🇸🇦", "Сербия": "🇷🇸",
-  "Сингапур": "🇸🇬", "Словакия": "🇸🇰", "США": "🇺🇸",
-  "Таджикистан": "🇹🇯", "Таиланд": "🇹🇭", "Турция": "🇹🇷",
-  "Узбекистан": "🇺🇿", "Украина": "🇺🇦", "Финляндия": "🇫🇮",
-  "Франция": "🇫🇷", "Чехия": "🇨🇿", "Швейцария": "🇨🇭",
-  "Швеция": "🇸🇪", "Япония": "🇯🇵", "Южная Корея": "🇰🇷",
-  "Другая": "🌍",
+  "Нигерия": "🇳🇬", "Норвегия": "🇳🇴", "ОАЭ": "🇦🇪",
+  "Пакистан": "🇵🇰", "Перу": "🇵🇪", "Польша": "🇵🇱",
+  "Португалия": "🇵🇹", "Россия": "🇷🇺", "Румыния": "🇷🇴",
+  "Саудовская Аравия": "🇸🇦", "Сербия": "🇷🇸", "Сингапур": "🇸🇬",
+  "Словакия": "🇸🇰", "США": "🇺🇸", "Таджикистан": "🇹🇯",
+  "Таиланд": "🇹🇭", "Тунис": "🇹🇳", "Турция": "🇹🇷",
+  "Узбекистан": "🇺🇿", "Украина": "🇺🇦", "Филиппины": "🇵🇭",
+  "Финляндия": "🇫🇮", "Франция": "🇫🇷", "Чехия": "🇨🇿",
+  "Чили": "🇨🇱", "Швейцария": "🇨🇭", "Швеция": "🇸🇪",
+  "Эстония": "🇪🇪", "Эфиопия": "🇪🇹", "Япония": "🇯🇵",
+  "Южная Корея": "🇰🇷", "Южная Африка": "🇿🇦", "Другая": "🌍",
 };
 
 function getFlag(country: string): string {
@@ -156,7 +156,7 @@ export default function Catalog() {
     }
     const amount = parseInt(topupAmount, 10);
     if (isNaN(amount) || amount < 1) {
-      toast({ title: "Ошибка", description: "Минимальное пополнение -- 1 Star", variant: "destructive" });
+      toast({ title: "Ошибка", description: "Минимальное пополнение — 1 Star", variant: "destructive" });
       return;
     }
     const tg = (window as any).Telegram?.WebApp;
@@ -175,7 +175,7 @@ export default function Catalog() {
               toast({ title: "Успешно", description: "Баланс пополнен" });
               fetch(`/api/balance/${user.id}`)
                 .then(r => r.json())
-                .then(data => setBalance(data.balance ?? 0));
+                .then(d => setBalance(d.balance ?? 0));
             } else if (status === "cancelled") {
               toast({ title: "Отменено", description: "Платёж отменён" });
             }
@@ -188,6 +188,33 @@ export default function Catalog() {
       }
     } catch {
       toast({ title: "Пополнение", description: "Используйте команду /topup в боте", variant: "destructive" });
+    }
+  };
+
+  const handleCryptoTopup = async () => {
+    if (!user) return;
+    const amount = parseInt(topupAmount, 10);
+    if (isNaN(amount) || amount < 1) return;
+    try {
+      const res = await fetch("/api/balance/crypto-topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telegramUserId: String(user.id), amount }),
+      });
+      const data = await res.json();
+      if (data.success && data.invoiceUrl) {
+        setIsTopupOpen(false);
+        const tg = (window as any).Telegram?.WebApp;
+        if (tg?.openLink) {
+          tg.openLink(data.invoiceUrl);
+        } else {
+          window.open(data.invoiceUrl, "_blank");
+        }
+      } else {
+        toast({ title: "Ошибка", description: data.error ?? "Crypto Bot не настроен", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Ошибка", description: "Не удалось создать счёт", variant: "destructive" });
     }
   };
 
@@ -214,7 +241,7 @@ export default function Catalog() {
             </div>
             <button
               onClick={() => setIsTopupOpen(true)}
-              className="flex items-center justify-center rounded-xl w-8 h-8 transition-all active:scale-90"
+              className="flex items-center justify-center rounded-xl w-8 h-8 transition-all active:scale-90 duration-100"
               style={{
                 background: "linear-gradient(135deg,#7c3aed,#a855f7)",
                 boxShadow: "0 2px 12px rgba(124,58,237,0.35)",
@@ -225,21 +252,21 @@ export default function Catalog() {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs — smaller, no emojis */}
         <div
           className="flex rounded-xl p-1 gap-1"
           style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.15)" }}
         >
           <button
             onClick={() => setActiveTab("telegram")}
-            className="flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all"
+            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition-all active:scale-95 duration-100"
             style={{
               background: activeTab === "telegram" ? "linear-gradient(135deg,#7c3aed,#a855f7)" : "transparent",
               color: activeTab === "telegram" ? "white" : undefined,
               boxShadow: activeTab === "telegram" ? "0 2px 8px rgba(124,58,237,0.3)" : "none",
             }}
           >
-            ✈️ Telegram
+            Telegram
             {accounts.length > 0 && (
               <span
                 className="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
@@ -253,14 +280,14 @@ export default function Catalog() {
           </button>
           <button
             onClick={() => setActiveTab("other")}
-            className="flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all"
+            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition-all active:scale-95 duration-100"
             style={{
               background: activeTab === "other" ? "linear-gradient(135deg,#7c3aed,#a855f7)" : "transparent",
               color: activeTab === "other" ? "white" : undefined,
               boxShadow: activeTab === "other" ? "0 2px 8px rgba(124,58,237,0.3)" : "none",
             }}
           >
-            🌐 Прочие
+            Прочие
             {otherProducts.length > 0 && (
               <span
                 className="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
@@ -274,182 +301,136 @@ export default function Catalog() {
           </button>
         </div>
 
-        {/* Lists */}
-        <div className="flex flex-col gap-2.5">
-          {isLoading ? (
-            Array.from({ length: 4 }).map((_, i) => <AccountSkeleton key={i} index={i} />)
-          ) : activeTab === "telegram" ? (
-            accounts.length === 0 ? (
-              <div className="text-center py-16 text-muted-foreground">
-                <div className="text-4xl mb-3">📭</div>
+        {/* Account list */}
+        {activeTab === "telegram" && (
+          <div className="flex flex-col gap-2.5">
+            {isLoading ? (
+              Array.from({ length: 3 }).map((_, i) => <AccountSkeleton key={i} index={i} />)
+            ) : accounts.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground animate-fade-in">
+                <div className="text-5xl mb-4">📭</div>
                 <p className="text-sm font-medium">Аккаунтов пока нет</p>
                 <p className="text-xs mt-1 opacity-60">Загляните позже</p>
               </div>
             ) : (
-              accounts.map((acc, i) => {
-                const isFree = acc.isFree === "true" || acc.price === 0;
-                const hasAutoDelivery = !!(acc.lolzItemId || acc.sessionId);
-                const idLabel = getIdDigitLabel(acc.userId);
-                return (
-                  <Link key={acc.id} href={`/account/${acc.id}`} className="block">
-                    <div
-                      className="card-press rounded-2xl p-4 transition-all duration-200"
-                      style={{
-                        background: "hsl(var(--card))",
-                        border: "1px solid rgba(168,85,247,0.12)",
-                        animationDelay: `${i * 0.04}s`,
-                      }}
-                      onMouseEnter={e => {
-                        (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(168,85,247,0.3)";
-                        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 20px rgba(124,58,237,0.12)";
-                      }}
-                      onMouseLeave={e => {
-                        (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(168,85,247,0.12)";
-                        (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
-                      }}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div
-                            className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                            style={{ background: "rgba(168,85,247,0.08)" }}
-                          >
-                            {getFlag(acc.country)}
-                          </div>
-                          <div className="min-w-0 space-y-1">
-                            {acc.description ? (
-                              <p className="text-sm font-semibold truncate">{acc.description}</p>
-                            ) : (
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-semibold text-sm truncate">{acc.country || "Неизвестно"}</span>
-                                {acc.hasPremium && <span className="badge-premium flex-shrink-0">Premium</span>}
-                                {isFree && <span className="badge-free flex-shrink-0">Free</span>}
-                              </div>
-                            )}
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {acc.description && <span className="text-[11px] text-muted-foreground">{acc.country || "Неизвестно"}</span>}
-                              {acc.phonePrefix && <span className="text-[11px] text-muted-foreground font-mono">{acc.phonePrefix}****</span>}
-                              {acc.dcId && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: "rgba(168,85,247,0.1)", color: "hsl(262 83% 70%)" }}>
-                                  DC {acc.dcId}
-                                </span>
-                              )}
-                              {idLabel && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: "rgba(99,102,241,0.1)", color: "hsl(239 84% 70%)" }}>
-                                  {idLabel}
-                                </span>
-                              )}
-                              {hasAutoDelivery && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: "rgba(16,185,129,0.1)", color: "hsl(160 84% 39%)" }}>
-                                  авто-выдача
-                                </span>
-                              )}
-                            </div>
-                            {acc.description && (acc.hasPremium || isFree) && (
-                              <div className="flex items-center gap-1.5">
-                                {acc.hasPremium && <span className="badge-premium flex-shrink-0">Premium</span>}
-                                {isFree && <span className="badge-free flex-shrink-0">Free</span>}
-                              </div>
-                            )}
-                          </div>
+              accounts.map((acc, i) => (
+                <Link key={acc.id} href={`/account/${acc.id}`}>
+                  <div
+                    className="card-press rounded-2xl p-4 animate-fade-in cursor-pointer"
+                    style={{
+                      background: "hsl(var(--card))",
+                      border: "1px solid rgba(168,85,247,0.12)",
+                      animationDelay: `${i * 0.05}s`,
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-lg leading-none">{getFlag(acc.country)}</span>
+                          <span className="font-semibold text-sm">{acc.country || "Другая"}</span>
+                          {acc.hasPremium && <span className="badge-premium">Premium</span>}
+                          {acc.hasPassword && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
+                              style={{ background: "rgba(251,146,60,0.15)", color: "#f97316" }}>
+                              2FA
+                            </span>
+                          )}
+                          {(acc.isFree === "true" || acc.price === 0) && (
+                            <span className="badge-free">Free</span>
+                          )}
                         </div>
-                        <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                          <div className="font-bold text-sm">
-                            {isFree ? (
-                              <span className="text-emerald-400">Бесплатно</span>
-                            ) : (
-                              <span className="flex items-center gap-1">
-                                <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
-                                <span>{acc.price}</span>
-                              </span>
-                            )}
-                          </div>
-                          <div
-                            className="text-[11px] font-bold text-white px-3 py-1.5 rounded-xl flex items-center gap-1"
-                            style={{
-                              background: isFree ? "linear-gradient(135deg,#059669,#10b981)" : "linear-gradient(135deg,#7c3aed,#a855f7)",
-                              boxShadow: isFree ? "0 2px 8px rgba(5,150,105,0.3)" : "0 2px 8px rgba(124,58,237,0.3)",
-                            }}
-                          >
-                            {!isFree && <Zap className="w-3 h-3" />}
-                            {isFree ? "Получить" : "Купить"}
-                          </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {acc.phonePrefix && (
+                            <span className="text-[10px] bg-muted/60 px-2 py-0.5 rounded-full text-muted-foreground font-mono">
+                              {acc.phonePrefix}****
+                            </span>
+                          )}
+                          {acc.dcId && (
+                            <span className="text-[10px] bg-muted/60 px-2 py-0.5 rounded-full text-muted-foreground">
+                              DC {acc.dcId}
+                            </span>
+                          )}
+                          {getIdDigitLabel(acc.userId) && (
+                            <span className="text-[10px] bg-muted/60 px-2 py-0.5 rounded-full text-muted-foreground">
+                              {getIdDigitLabel(acc.userId)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                        <span className="text-sm font-bold" style={{ color: "hsl(262 83% 70%)" }}>
+                          {acc.isFree === "true" || acc.price === 0 ? "Free" : `${acc.price} ★`}
+                        </span>
+                        <div
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold text-white"
+                          style={{
+                            background: "linear-gradient(135deg,#7c3aed,#a855f7)",
+                            boxShadow: "0 2px 8px rgba(124,58,237,0.3)",
+                          }}
+                        >
+                          Купить
                         </div>
                       </div>
                     </div>
-                  </Link>
-                );
-              })
-            )
-          ) : (
-            // Other products tab
-            otherProducts.length === 0 ? (
-              <div className="text-center py-16 text-muted-foreground">
-                <div className="text-4xl mb-3">📭</div>
+                  </div>
+                </Link>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Other products list */}
+        {activeTab === "other" && (
+          <div className="flex flex-col gap-2.5">
+            {isLoading ? (
+              Array.from({ length: 3 }).map((_, i) => <AccountSkeleton key={i} index={i} />)
+            ) : otherProducts.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground animate-fade-in">
+                <div className="text-5xl mb-4">📭</div>
                 <p className="text-sm font-medium">Товаров пока нет</p>
                 <p className="text-xs mt-1 opacity-60">Загляните позже</p>
               </div>
             ) : (
               otherProducts.map((product, i) => {
-                const isFree = product.isFree === "true" || product.price === 0;
                 const sn = getSocialNetwork(product.socialNetwork);
+                const svgIcon = getSocialIconSvg(product.socialNetwork);
+                const isFree = product.isFree === "true" || product.price === 0;
                 return (
-                  <Link key={product.id} href={`/other/${product.id}`} className="block">
+                  <Link key={product.id} href={`/other-product/${product.id}`}>
                     <div
-                      className="card-press rounded-2xl p-4 transition-all duration-200"
+                      className="card-press rounded-2xl p-4 animate-fade-in cursor-pointer"
                       style={{
                         background: "hsl(var(--card))",
                         border: "1px solid rgba(168,85,247,0.12)",
-                        animationDelay: `${i * 0.04}s`,
-                      }}
-                      onMouseEnter={e => {
-                        (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(168,85,247,0.3)";
-                        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 20px rgba(124,58,237,0.12)";
-                      }}
-                      onMouseLeave={e => {
-                        (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(168,85,247,0.12)";
-                        (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
+                        animationDelay: `${i * 0.05}s`,
                       }}
                     >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div
-                            className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                            style={{ background: "rgba(168,85,247,0.08)" }}
-                          >
-                            {sn.emoji}
-                          </div>
-                          <div className="min-w-0 space-y-1">
-                            {product.description ? (
-                              <p className="text-sm font-semibold truncate">{product.description}</p>
-                            ) : (
-                              <p className="text-sm font-semibold">{sn.name}</p>
-                            )}
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[11px] text-muted-foreground">{sn.name}</span>
-                            </div>
-                          </div>
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                          style={{ background: sn.bgColor }}
+                          dangerouslySetInnerHTML={{
+                            __html: `<div style="width:22px;height:22px">${svgIcon}</div>`
+                          }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-sm">{sn.name}</div>
+                          {product.description && (
+                            <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{product.description}</div>
+                          )}
                         </div>
                         <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                          <div className="font-bold text-sm">
-                            {isFree ? (
-                              <span className="text-emerald-400">Бесплатно</span>
-                            ) : (
-                              <span className="flex items-center gap-1">
-                                <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
-                                <span>{product.price}</span>
-                              </span>
-                            )}
-                          </div>
+                          <span className="text-sm font-bold" style={{ color: "hsl(262 83% 70%)" }}>
+                            {isFree ? "Free" : `${product.price} ★`}
+                          </span>
                           <div
-                            className="text-[11px] font-bold text-white px-3 py-1.5 rounded-xl flex items-center gap-1"
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold text-white"
                             style={{
-                              background: isFree ? "linear-gradient(135deg,#059669,#10b981)" : "linear-gradient(135deg,#7c3aed,#a855f7)",
-                              boxShadow: isFree ? "0 2px 8px rgba(5,150,105,0.3)" : "0 2px 8px rgba(124,58,237,0.3)",
+                              background: "linear-gradient(135deg,#7c3aed,#a855f7)",
+                              boxShadow: "0 2px 8px rgba(124,58,237,0.3)",
                             }}
                           >
-                            {!isFree && <Zap className="w-3 h-3" />}
-                            {isFree ? "Получить" : "Купить"}
+                            Купить
                           </div>
                         </div>
                       </div>
@@ -457,62 +438,48 @@ export default function Catalog() {
                   </Link>
                 );
               })
-            )
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Topup Dialog */}
       <Dialog open={isTopupOpen} onOpenChange={setIsTopupOpen}>
-        <DialogContent className="max-w-sm rounded-2xl">
+        <DialogContent className="max-w-xs rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-              Пополнение баланса
-            </DialogTitle>
+            <DialogTitle className="text-center">Пополнить баланс</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Сумма Stars (минимум 1)</Label>
+              <Label>Сумма (Stars)</Label>
               <Input
                 type="number"
                 value={topupAmount}
                 onChange={e => setTopupAmount(e.target.value)}
-                min={1}
                 placeholder="100"
-                className="rounded-xl"
+                min="1"
               />
             </div>
-            <div className="grid grid-cols-4 gap-2">
-              {[50, 100, 250, 500].map(amt => (
-                <button
-                  key={amt}
-                  className="rounded-xl py-2 text-xs font-semibold transition-all"
-                  style={{
-                    background: topupAmount === String(amt) ? "linear-gradient(135deg,#7c3aed,#a855f7)" : "rgba(168,85,247,0.08)",
-                    border: topupAmount === String(amt) ? "1px solid rgba(168,85,247,0.5)" : "1px solid rgba(168,85,247,0.15)",
-                    color: topupAmount === String(amt) ? "white" : undefined,
-                  }}
-                  onClick={() => setTopupAmount(String(amt))}
-                >
-                  {amt}
-                </button>
-              ))}
-            </div>
             <button
-              className="w-full rounded-xl py-3 text-sm font-bold text-white flex items-center justify-center gap-2"
-              style={{
-                background: "linear-gradient(135deg,#7c3aed,#a855f7,#ec4899)",
-                boxShadow: "0 4px 16px rgba(124,58,237,0.35)",
-              }}
               onClick={handleTopup}
+              className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-95 duration-100"
+              style={{
+                background: "linear-gradient(135deg,#7c3aed,#a855f7)",
+                boxShadow: "0 2px 12px rgba(124,58,237,0.35)",
+              }}
             >
-              <Star className="w-4 h-4 fill-current" />
-              Пополнить
+              Пополнить через Telegram Stars
             </button>
-            <p className="text-xs text-muted-foreground text-center">
-              После нажатия появится чек оплаты в Telegram
-            </p>
+            <button
+              onClick={handleCryptoTopup}
+              className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-95 duration-100"
+              style={{
+                background: "linear-gradient(135deg,#0088cc,#00a0e0)",
+                boxShadow: "0 2px 12px rgba(0,136,204,0.35)",
+              }}
+            >
+              Пополнить через Crypto Bot
+            </button>
           </div>
         </DialogContent>
       </Dialog>

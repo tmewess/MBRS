@@ -5,8 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Plus, Shield, Loader2 } from "lucide-react";
+import { Trash2, Plus, Shield, Loader2, Bell, Wrench } from "lucide-react";
 
 interface BotSettings {
   id?: number;
@@ -22,6 +23,10 @@ interface BotSettings {
   lolzApiKey: string;
   tgApiId: string;
   tgApiHash: string;
+  requireSubscription: boolean;
+  subscriptionChannel: string;
+  maintenanceMode: boolean;
+  maintenanceMessage: string;
 }
 
 interface Proxy {
@@ -47,6 +52,10 @@ export default function Settings() {
     lolzApiKey: "",
     tgApiId: "",
     tgApiHash: "",
+    requireSubscription: false,
+    subscriptionChannel: "",
+    maintenanceMode: false,
+    maintenanceMessage: "🔧 Технические работы. Скоро вернёмся!",
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -76,6 +85,10 @@ export default function Settings() {
           lolzApiKey: data.lolzApiKey || "",
           tgApiId: data.tgApiId || "",
           tgApiHash: data.tgApiHash || "",
+          requireSubscription: data.requireSubscription || false,
+          subscriptionChannel: data.subscriptionChannel || "",
+          maintenanceMode: data.maintenanceMode || false,
+          maintenanceMessage: data.maintenanceMessage || "🔧 Технические работы. Скоро вернёмся!",
         });
       })
       .catch(() => {})
@@ -192,6 +205,69 @@ export default function Settings() {
           </CardContent>
         </Card>
 
+        {/* Subscription requirement */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5" />
+              Обязательная подписка
+            </CardTitle>
+            <CardDescription>Требовать подписку на канал перед использованием бота</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-sm">Требовать подписку</p>
+                <p className="text-xs text-muted-foreground">Пользователи без подписки не смогут пользоваться ботом</p>
+              </div>
+              <Switch checked={settings.requireSubscription} onCheckedChange={(v) => handleChange("requireSubscription", v)} />
+            </div>
+            {settings.requireSubscription && (
+              <div>
+                <Label>Username канала</Label>
+                <Input
+                  value={settings.subscriptionChannel}
+                  onChange={(e) => handleChange("subscriptionChannel", e.target.value)}
+                  placeholder="@mychannel или mychannel"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Укажите @username или просто username без @</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Maintenance mode */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wrench className="w-5 h-5" />
+              Режим обслуживания
+            </CardTitle>
+            <CardDescription>Временно отключить бот для всех пользователей</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-sm">Режим обслуживания</p>
+                <p className="text-xs text-muted-foreground">Бот будет отвечать сообщением об обслуживании всем пользователям (кроме администраторов)</p>
+              </div>
+              <Switch
+                checked={settings.maintenanceMode}
+                onCheckedChange={(v) => handleChange("maintenanceMode", v)}
+              />
+            </div>
+            <div>
+              <Label>Сообщение обслуживания</Label>
+              <Textarea
+                value={settings.maintenanceMessage}
+                onChange={(e) => handleChange("maintenanceMessage", e.target.value)}
+                placeholder="🔧 Технические работы. Скоро вернёмся!"
+                rows={3}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Способы оплаты</CardTitle>
@@ -220,6 +296,7 @@ export default function Settings() {
                 <div className="pt-4 border-t">
                   <Label>Crypto Bot API Token</Label>
                   <Input type="password" value={settings.cryptoBotToken} onChange={(e) => handleChange("cryptoBotToken", e.target.value)} placeholder="Токен Crypto Bot" />
+                  <p className="text-xs text-muted-foreground mt-1">Получить токен у @CryptoBot → /pay</p>
                 </div>
               )}
             </div>
@@ -269,11 +346,11 @@ export default function Settings() {
         </Card>
 
         <Button type="submit" disabled={isSaving} className="w-full">
-          {isSaving ? "Сохранение..." : "Сохранить настройки"}
+          {isSaving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Сохранение...</> : "Сохранить настройки"}
         </Button>
       </form>
 
-      {/* Прокси */}
+      {/* Proxies */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -285,66 +362,40 @@ export default function Settings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Форма добавления */}
           <div className="border rounded-md p-4 space-y-4">
             <h4 className="font-medium text-sm">Добавить прокси</h4>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>IP адрес</Label>
-                <Input
-                  value={newProxy.ip}
-                  onChange={(e) => setNewProxy((p) => ({ ...p, ip: e.target.value }))}
-                  placeholder="1.2.3.4"
-                />
+                <Input value={newProxy.ip} onChange={(e) => setNewProxy((p) => ({ ...p, ip: e.target.value }))} placeholder="1.2.3.4" />
               </div>
               <div>
                 <Label>Порт</Label>
-                <Input
-                  value={newProxy.port}
-                  onChange={(e) => setNewProxy((p) => ({ ...p, port: e.target.value }))}
-                  placeholder="1080"
-                />
+                <Input value={newProxy.port} onChange={(e) => setNewProxy((p) => ({ ...p, port: e.target.value }))} placeholder="1080" />
               </div>
               <div>
                 <Label>Логин <span className="text-muted-foreground">(необязательно)</span></Label>
-                <Input
-                  value={newProxy.username}
-                  onChange={(e) => setNewProxy((p) => ({ ...p, username: e.target.value }))}
-                  placeholder="user"
-                />
+                <Input value={newProxy.username} onChange={(e) => setNewProxy((p) => ({ ...p, username: e.target.value }))} placeholder="user" />
               </div>
               <div>
                 <Label>Пароль <span className="text-muted-foreground">(необязательно)</span></Label>
-                <Input
-                  type="password"
-                  value={newProxy.password}
-                  onChange={(e) => setNewProxy((p) => ({ ...p, password: e.target.value }))}
-                  placeholder="••••••"
-                />
+                <Input type="password" value={newProxy.password} onChange={(e) => setNewProxy((p) => ({ ...p, password: e.target.value }))} placeholder="••••••" />
               </div>
             </div>
             <Button onClick={handleAddProxy} disabled={addingProxy} className="w-full">
-              {addingProxy ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Добавление...</>
-              ) : (
-                <><Plus className="w-4 h-4 mr-2" />Добавить прокси</>
-              )}
+              {addingProxy ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Добавление...</> : <><Plus className="w-4 h-4 mr-2" />Добавить прокси</>}
             </Button>
           </div>
 
-          {/* Список прокси */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <h4 className="font-medium text-sm">
-                Активные прокси
-              </h4>
+              <h4 className="font-medium text-sm">Активные прокси</h4>
               <Badge variant="secondary">{proxies.length} шт.</Badge>
             </div>
 
             {proxiesLoading ? (
               <div className="flex items-center justify-center py-6 text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Загрузка...
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />Загрузка...
               </div>
             ) : proxies.length === 0 ? (
               <div className="text-center py-6 text-muted-foreground text-sm border rounded-md">
@@ -355,18 +406,10 @@ export default function Settings() {
                 {proxies.map((proxy, idx) => (
                   <div key={proxy.id} className="flex items-center justify-between border rounded-md px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <Badge variant="outline" className="text-xs font-mono w-6 h-6 flex items-center justify-center p-0">
-                        {idx + 1}
-                      </Badge>
+                      <Badge variant="outline" className="text-xs font-mono w-6 h-6 flex items-center justify-center p-0">{idx + 1}</Badge>
                       <div>
-                        <p className="font-mono text-sm font-medium">
-                          {proxy.ip}:{proxy.port}
-                        </p>
-                        {proxy.username && (
-                          <p className="text-xs text-muted-foreground">
-                            Логин: {proxy.username}
-                          </p>
-                        )}
+                        <p className="font-mono text-sm font-medium">{proxy.ip}:{proxy.port}</p>
+                        {proxy.username && <p className="text-xs text-muted-foreground">Логин: {proxy.username}</p>}
                       </div>
                     </div>
                     <Button
@@ -376,11 +419,7 @@ export default function Settings() {
                       disabled={deletingProxyId === proxy.id}
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
-                      {deletingProxyId === proxy.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
+                      {deletingProxyId === proxy.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                     </Button>
                   </div>
                 ))}

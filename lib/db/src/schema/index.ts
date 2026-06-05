@@ -8,3 +8,4 @@ export * from "./admins";
 export * from "./users";
 export * from "./proxies";
 export * from "./other_products";
+export * from "./promo_codes";

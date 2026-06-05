@@ -2,12 +2,14 @@ import { pgTable, text, serial, timestamp, integer, doublePrecision } from "driz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { accountsTable } from "./accounts";
+import { otherProductsTable } from "./other_products";
 
 export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),
   telegramUserId: text("telegram_user_id").notNull(),
   telegramUsername: text("telegram_username"),
   accountId: integer("account_id").references(() => accountsTable.id),
+  otherProductId: integer("other_product_id").references(() => otherProductsTable.id),
   status: text("status").notNull().default("pending"),
   paymentMethod: text("payment_method").notNull(),
   amount: doublePrecision("amount").notNull(),

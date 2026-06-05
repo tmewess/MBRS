@@ -2,12 +2,17 @@ import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getTelegramUser } from "@/lib/telegram";
-import { Star, User, Hash, AtSign, ShoppingBag } from "lucide-react";
+import { Star, User, Hash, AtSign, ShoppingBag, Tag, Check, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Profile() {
   const user = getTelegramUser();
+  const { toast } = useToast();
   const [balance, setBalance] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoStatus, setPromoStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [promoMessage, setPromoMessage] = useState("");
 
   useEffect(() => {
     if (user) {
@@ -22,6 +27,39 @@ export default function Profile() {
       setIsLoading(false);
     }
   }, [user]);
+
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) return;
+    if (!user) {
+      toast({ title: "Ошибка", description: "Откройте в Telegram", variant: "destructive" });
+      return;
+    }
+    setPromoStatus("loading");
+    try {
+      const res = await fetch("/api/promo/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: promoCode.trim(), telegramUserId: String(user.id) }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPromoStatus("success");
+        setPromoMessage(data.message || "Промокод применён!");
+        if (data.discountType === "fixed" && data.bonus) {
+          setBalance(b => b + data.bonus);
+        }
+        toast({ title: "Промокод применён!", description: data.message });
+        setPromoCode("");
+      } else {
+        setPromoStatus("error");
+        setPromoMessage(data.error || "Промокод недействителен");
+      }
+    } catch {
+      setPromoStatus("error");
+      setPromoMessage("Ошибка соединения");
+    }
+    setTimeout(() => { setPromoStatus("idle"); setPromoMessage(""); }, 3000);
+  };
 
   return (
     <Layout>
@@ -47,7 +85,6 @@ export default function Profile() {
               }}
             >
               <div className="flex items-center gap-4">
-                {/* Avatar */}
                 <div className="relative flex-shrink-0">
                   <div
                     className="absolute inset-0 rounded-2xl blur-md opacity-60"
@@ -115,9 +152,68 @@ export default function Profile() {
               </div>
             </div>
 
+            {/* Promo code card */}
+            <div
+              className="rounded-2xl p-4 animate-fade-in-4"
+              style={{
+                background: "hsl(var(--card))",
+                border: "1px solid rgba(168,85,247,0.12)",
+              }}
+            >
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <Tag className="w-3 h-3" style={{ color: "hsl(262 83% 68%)" }} />
+                Промокод
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={e => setPromoCode(e.target.value.toUpperCase())}
+                  onKeyDown={e => e.key === "Enter" && handleApplyPromo()}
+                  placeholder="Введите промокод"
+                  className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono bg-transparent outline-none"
+                  style={{
+                    background: "rgba(168,85,247,0.07)",
+                    border: `1px solid ${
+                      promoStatus === "success" ? "rgba(16,185,129,0.4)" :
+                      promoStatus === "error" ? "rgba(239,68,68,0.4)" :
+                      "rgba(168,85,247,0.2)"
+                    }`,
+                    color: "inherit",
+                  }}
+                />
+                <button
+                  onClick={handleApplyPromo}
+                  disabled={promoStatus === "loading" || !promoCode.trim()}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all active:scale-95 duration-100 disabled:opacity-50"
+                  style={{
+                    background: promoStatus === "success"
+                      ? "linear-gradient(135deg,#059669,#10b981)"
+                      : promoStatus === "error"
+                      ? "linear-gradient(135deg,#dc2626,#ef4444)"
+                      : "linear-gradient(135deg,#7c3aed,#a855f7)",
+                    boxShadow: "0 2px 8px rgba(124,58,237,0.3)",
+                  }}
+                >
+                  {promoStatus === "loading" ? "..." :
+                   promoStatus === "success" ? <Check className="w-4 h-4" /> :
+                   promoStatus === "error" ? <X className="w-4 h-4" /> :
+                   "Применить"}
+                </button>
+              </div>
+              {promoMessage && (
+                <div
+                  className="mt-2 text-xs font-medium"
+                  style={{ color: promoStatus === "success" ? "#10b981" : "#f87171" }}
+                >
+                  {promoMessage}
+                </div>
+              )}
+            </div>
+
             {/* Info card */}
             <div
-              className="rounded-2xl p-4 space-y-3 animate-fade-in-4"
+              className="rounded-2xl p-4 space-y-3"
               style={{
                 background: "hsl(var(--card))",
                 border: "1px solid rgba(168,85,247,0.12)",

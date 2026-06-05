@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, desc, sql } from "drizzle-orm";
-import { db, ordersTable, accountsTable } from "@workspace/db";
+import { db, ordersTable, accountsTable, otherProductsTable } from "@workspace/db";
 
 const router = Router();
 
@@ -11,6 +11,7 @@ router.get("/orders", async (_req, res): Promise<void> => {
       telegramUserId: ordersTable.telegramUserId,
       telegramUsername: ordersTable.telegramUsername,
       accountId: ordersTable.accountId,
+      otherProductId: ordersTable.otherProductId,
       status: ordersTable.status,
       paymentMethod: ordersTable.paymentMethod,
       amount: ordersTable.amount,
@@ -29,9 +30,12 @@ router.get("/orders", async (_req, res): Promise<void> => {
       accountDescription: accountsTable.description,
       accountPassword: accountsTable.password,
       accountHasPassword: accountsTable.hasPassword,
+      otherProductSocialNetwork: otherProductsTable.socialNetwork,
+      otherProductDescription: otherProductsTable.description,
     })
     .from(ordersTable)
     .leftJoin(accountsTable, eq(ordersTable.accountId, accountsTable.id))
+    .leftJoin(otherProductsTable, eq(ordersTable.otherProductId, otherProductsTable.id))
     .orderBy(desc(ordersTable.createdAt));
 
   res.json(rows);

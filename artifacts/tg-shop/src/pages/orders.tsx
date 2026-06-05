@@ -8,12 +8,14 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Copy, Download, RotateCcw, ChevronDown, ChevronUp, ArrowLeft, ShoppingBag } from "lucide-react";
 import { GetCodeModal } from "@/components/get-code-modal";
+import { getSocialNetwork, getSocialIconSvg } from "@/lib/social-networks";
 
 interface OrderWithAccount {
   id: number;
   telegramUserId: string;
   telegramUsername: string | null;
-  accountId: number;
+  accountId: number | null;
+  otherProductId: number | null;
   status: string;
   paymentMethod: string;
   amount: number;
@@ -30,6 +32,8 @@ interface OrderWithAccount {
   accountDescription: string | null;
   accountPassword: string | null;
   accountHasPassword: boolean | null;
+  otherProductSocialNetwork: string | null;
+  otherProductDescription: string | null;
 }
 
 const COUNTRY_FLAGS: Record<string, string> = {
@@ -82,6 +86,10 @@ function DataRow({
       </div>
     </div>
   );
+}
+
+function isOtherProductOrder(order: OrderWithAccount): boolean {
+  return order.otherProductId !== null && order.accountId === null;
 }
 
 export default function Orders() {
@@ -141,11 +149,39 @@ export default function Orders() {
     }
   };
 
+  function getOrderTitle(order: OrderWithAccount): string {
+    if (isOtherProductOrder(order) && order.otherProductSocialNetwork) {
+      const sn = getSocialNetwork(order.otherProductSocialNetwork);
+      return sn.name;
+    }
+    if (order.accountCountry) return order.accountCountry;
+    return "Заказ";
+  }
+
+  function getOrderIcon(order: OrderWithAccount): string {
+    if (isOtherProductOrder(order) && order.otherProductSocialNetwork) {
+      const sn = getSocialNetwork(order.otherProductSocialNetwork);
+      return sn.emoji;
+    }
+    if (order.accountCountry) return getFlag(order.accountCountry);
+    return "📦";
+  }
+
+  function getOrderSvgIcon(order: OrderWithAccount): { svg: string; bg: string } | null {
+    if (isOtherProductOrder(order) && order.otherProductSocialNetwork) {
+      const sn = getSocialNetwork(order.otherProductSocialNetwork);
+      return { svg: getSocialIconSvg(order.otherProductSocialNetwork), bg: sn.bgColor };
+    }
+    return null;
+  }
+
   // Full-screen detail view
   if (selectedOrder) {
     const order = selectedOrder;
-    const hasApiIntegration = !!(order.accountLolzItemId) || !!(order.accountSessionId);
+    const isOther = isOtherProductOrder(order);
+    const hasApiIntegration = !isOther && (!!(order.accountLolzItemId) || !!(order.accountSessionId));
     const statusStyle = STATUS_STYLES[order.status] ?? { bg: "rgba(168,85,247,0.1)", color: "hsl(262 83% 68%)" };
+    const svgInfo = getOrderSvgIcon(order);
 
     return (
       <>
@@ -153,202 +189,157 @@ export default function Orders() {
           {/* Detail header */}
           <header className="sticky top-0 z-50 w-full">
             <div
-              className="absolute inset-0 border-b"
-              style={{
-                background: "rgba(0,0,0,0.85)",
-                borderColor: "rgba(168,85,247,0.12)",
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-              }}
+              className="absolute inset-0"
+              style={{ background: "hsl(var(--background))", borderBottom: "1px solid rgba(168,85,247,0.15)" }}
             />
-            <div className="relative flex h-14 items-center px-4 gap-3">
+            <div className="relative flex items-center gap-3 px-4 h-14">
               <button
-                onClick={() => setSelectedOrder(null)}
-                className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90"
+                onClick={() => { setSelectedOrder(null); setShowCopyDropdown(false); setShowCodeModal(false); }}
+                className="flex items-center justify-center w-9 h-9 rounded-xl transition-all active:scale-90"
                 style={{ background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.2)" }}
               >
                 <ArrowLeft className="w-4 h-4" style={{ color: "hsl(262 83% 68%)" }} />
               </button>
-              <span className="font-bold tracking-tight text-base">Данные аккаунта</span>
+              <div>
+                <div className="font-semibold tracking-tight" style={{ fontSize: "15px" }}>
+                  Заказ #{order.id}
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  {format(new Date(order.createdAt), "dd MMM yyyy, HH:mm", { locale: ru })}
+                </div>
+              </div>
+              <div className="ml-auto">
+                <div
+                  className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
+                  style={{ background: statusStyle.bg, color: statusStyle.color }}
+                >
+                  {STATUS_LABELS[order.status] ?? order.status}
+                </div>
+              </div>
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto p-4 space-y-4 pb-8">
-            {/* Account header */}
+          <main className="flex-1 overflow-y-auto px-4 py-5 space-y-4">
+            {/* Order type header */}
             <div
-              className="rounded-2xl p-4 flex items-center gap-4 animate-fade-in"
-              style={{
-                background: "linear-gradient(135deg,rgba(124,58,237,0.15),rgba(168,85,247,0.08))",
-                border: "1px solid rgba(168,85,247,0.2)",
-              }}
+              className="flex items-center gap-3 p-3 rounded-2xl"
+              style={{ background: "rgba(168,85,247,0.07)", border: "1px solid rgba(168,85,247,0.15)" }}
             >
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
-                style={{ background: "rgba(168,85,247,0.12)" }}
-              >
-                {getFlag(order.accountCountry || "")}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-bold">{order.accountCountry || "Аккаунт Telegram"}</div>
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  {order.accountHasPremium && (
-                    <span className="badge-premium">Premium</span>
-                  )}
-                  <span
-                    className="text-[10px] font-semibold px-2 py-0.5 rounded-lg"
-                    style={{ background: statusStyle.bg, color: statusStyle.color }}
-                  >
-                    {STATUS_LABELS[order.status] ?? order.status}
-                  </span>
-                  {order.accountDcId && (
-                    <span
-                      className="text-[10px] font-medium px-2 py-0.5 rounded-lg"
-                      style={{ background: "rgba(168,85,247,0.1)", color: "hsl(262 83% 68%)" }}
-                    >
-                      DC {order.accountDcId}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Login data */}
-            <div
-              className="rounded-2xl p-4 space-y-3 animate-fade-in-2"
-              style={{ background: "hsl(var(--card))", border: "1px solid rgba(168,85,247,0.12)" }}
-            >
-              <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
-                Данные для входа
-              </div>
-
-              <DataRow label="Номер телефона" value={order.accountPhone} onCopy={() => handleCopy(order.accountPhone, "Номер")} />
-              <DataRow label="ID аккаунта" value={order.accountUserId} onCopy={() => handleCopy(order.accountUserId, "ID")} />
-              <DataRow label="Auth Key" value={order.accountAuthKey} onCopy={() => handleCopy(order.accountAuthKey, "Auth Key")} />
-              <DataRow label="DC" value={order.accountDcId} onCopy={() => handleCopy(order.accountDcId, "DC")} />
-              {order.accountHasPassword && (
-                <DataRow label="Пароль 2FA" value={order.accountPassword} onCopy={() => handleCopy(order.accountPassword, "Пароль")} />
+              {svgInfo ? (
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: svgInfo.bg }}
+                  dangerouslySetInnerHTML={{ __html: `<div style="width:22px;height:22px">${svgInfo.svg}</div>` }}
+                />
+              ) : (
+                <span className="text-2xl">{getOrderIcon(order)}</span>
               )}
-              {order.accountDescription && (
-                <div className="space-y-1">
-                  <div className="text-[11px] text-muted-foreground font-medium">Описание</div>
-                  <div
-                    className="rounded-xl px-3 py-2.5 text-xs text-muted-foreground"
-                    style={{ background: "rgba(168,85,247,0.07)", border: "1px solid rgba(168,85,247,0.12)" }}
-                  >
-                    {order.accountDescription}
-                  </div>
-                </div>
-              )}
-
-              {/* Copy dropdown */}
-              <div className="relative pt-1">
-                <button
-                  className="w-full rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-                  style={{
-                    background: "rgba(168,85,247,0.1)",
-                    border: "1px solid rgba(168,85,247,0.2)",
-                    color: "hsl(262 83% 70%)",
-                  }}
-                  onClick={() => setShowCopyDropdown(!showCopyDropdown)}
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  Скопировать данные
-                  {showCopyDropdown ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                </button>
-                {showCopyDropdown && (
-                  <div
-                    className="absolute top-full left-0 right-0 mt-1 rounded-xl overflow-hidden z-10"
-                    style={{ background: "hsl(var(--card))", border: "1px solid rgba(168,85,247,0.2)" }}
-                  >
-                    <button
-                      className="w-full text-left text-xs px-4 py-3 font-medium transition-colors hover:bg-primary/5"
-                      onClick={() => { handleCopyAll(order); setShowCopyDropdown(false); }}
-                    >
-                      Все данные
-                    </button>
-                    {order.accountPhone && (
-                      <button
-                        className="w-full text-left text-xs px-4 py-3 font-medium transition-colors hover:bg-primary/5 border-t border-border/30"
-                        onClick={() => { handleCopy(order.accountPhone, "Номер"); setShowCopyDropdown(false); }}
-                      >
-                        Только номер
-                      </button>
-                    )}
-                    {order.accountAuthKey && (
-                      <button
-                        className="w-full text-left text-xs px-4 py-3 font-medium transition-colors hover:bg-primary/5 border-t border-border/30"
-                        onClick={() => { handleCopy(order.accountAuthKey, "Auth Key"); setShowCopyDropdown(false); }}
-                      >
-                        Только Auth Key
-                      </button>
-                    )}
-                  </div>
+              <div>
+                <div className="font-semibold text-sm">{getOrderTitle(order)}</div>
+                {isOther && order.otherProductDescription && (
+                  <div className="text-xs text-muted-foreground">{order.otherProductDescription}</div>
+                )}
+                {!isOther && order.accountHasPremium && (
+                  <span className="text-[10px] bg-primary/15 text-primary px-1.5 py-0.5 rounded font-medium">Premium</span>
                 )}
               </div>
+              <div className="ml-auto text-right">
+                <div className="text-sm font-bold" style={{ color: "hsl(262 83% 68%)" }}>
+                  {order.amount === 0 ? "Free" : `${order.amount} ★`}
+                </div>
+              </div>
             </div>
 
-            {/* Download */}
-            {order.accountFilePath && (
+            {/* Account data for Telegram accounts */}
+            {!isOther && (
               <div
-                className="rounded-2xl p-4 animate-fade-in-3"
-                style={{ background: "hsl(var(--card))", border: "1px solid rgba(168,85,247,0.12)" }}
+                className="p-4 rounded-2xl space-y-3"
+                style={{ background: "rgba(168,85,247,0.05)", border: "1px solid rgba(168,85,247,0.12)" }}
               >
-                <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Скачать</div>
-                <button
-                  onClick={() => handleDownload(order.accountId)}
-                  className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all active:scale-95"
-                  style={{
-                    background: "linear-gradient(135deg,#7c3aed,#a855f7)",
-                    boxShadow: "0 2px 12px rgba(124,58,237,0.3)",
-                  }}
-                >
-                  <Download className="w-4 h-4" />
-                  Скачать TData
-                </button>
+                <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                  Данные аккаунта
+                </div>
+                <DataRow label="Номер телефона" value={order.accountPhone} onCopy={() => handleCopy(order.accountPhone, "Номер")} />
+                <DataRow label="ID пользователя" value={order.accountUserId} onCopy={() => handleCopy(order.accountUserId, "ID")} />
+                <DataRow label="DC ID" value={order.accountDcId} onCopy={() => handleCopy(order.accountDcId, "DC")} />
+                {order.accountHasPassword && order.accountPassword && (
+                  <DataRow label="Пароль 2FA" value={order.accountPassword} onCopy={() => handleCopy(order.accountPassword, "Пароль")} />
+                )}
+                {order.accountAuthKey && (
+                  <DataRow label="Auth Key" value={order.accountAuthKey} onCopy={() => handleCopy(order.accountAuthKey, "Auth Key")} />
+                )}
+
+                {/* Copy all */}
+                <div className="relative pt-1">
+                  <button
+                    onClick={() => setShowCopyDropdown(!showCopyDropdown)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95"
+                    style={{ background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.2)", color: "hsl(262 83% 68%)" }}
+                  >
+                    Скопировать данные
+                    {showCopyDropdown ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  </button>
+                  {showCopyDropdown && (
+                    <div
+                      className="absolute top-full left-0 right-0 mt-1 rounded-xl overflow-hidden z-10"
+                      style={{ background: "hsl(var(--card))", border: "1px solid rgba(168,85,247,0.2)", boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}
+                    >
+                      <button className="w-full text-left px-4 py-2.5 text-sm active:bg-muted/20 transition-colors" onClick={() => { handleCopyAll(order); setShowCopyDropdown(false); }}>Все данные</button>
+                      {order.accountPhone && <button className="w-full text-left px-4 py-2.5 text-sm active:bg-muted/20 transition-colors" onClick={() => { handleCopy(order.accountPhone, "Номер"); setShowCopyDropdown(false); }}>Только номер</button>}
+                      {order.accountAuthKey && <button className="w-full text-left px-4 py-2.5 text-sm active:bg-muted/20 transition-colors" onClick={() => { handleCopy(order.accountAuthKey, "Auth Key"); setShowCopyDropdown(false); }}>Только Auth Key</button>}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Code & Reset */}
-            {hasApiIntegration && (
+            {/* Download / Reset sessions for Telegram accounts */}
+            {!isOther && (order.accountFilePath || hasApiIntegration) && (
               <div
-                className="rounded-2xl p-4 animate-fade-in-4"
-                style={{ background: "hsl(var(--card))", border: "1px solid rgba(168,85,247,0.12)" }}
+                className="p-4 rounded-2xl space-y-3"
+                style={{ background: "rgba(168,85,247,0.05)", border: "1px solid rgba(168,85,247,0.12)" }}
               >
-                <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
-                  Войти в аккаунт
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white transition-all active:scale-95"
-                    style={{
-                      background: "linear-gradient(135deg,#059669,#10b981)",
-                      boxShadow: "0 2px 12px rgba(5,150,105,0.3)",
-                    }}
-                    onClick={() => setShowCodeModal(true)}
-                  >
-                    Получить код
-                  </button>
-                  <button
-                    className="flex-1 rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95"
-                    style={{
-                      background: "rgba(168,85,247,0.1)",
-                      border: "1px solid rgba(168,85,247,0.2)",
-                      color: "hsl(262 83% 70%)",
-                    }}
-                    onClick={() => handleResetSessions(order)}
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    Сбросить
-                  </button>
+                <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Действия</div>
+                <div className="flex gap-2 flex-wrap">
+                  {order.accountFilePath && order.accountId !== null && (
+                    <button
+                      onClick={() => handleDownload(order.accountId!)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium active:scale-95 transition-all"
+                      style={{ background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)", color: "hsl(262 83% 68%)" }}
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Скачать TData
+                    </button>
+                  )}
+                  {hasApiIntegration && (
+                    <>
+                      <button
+                        onClick={() => setShowCodeModal(true)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-white active:scale-95 transition-all"
+                        style={{ background: "linear-gradient(135deg,#059669,#10b981)", boxShadow: "0 2px 8px rgba(16,185,129,0.3)" }}
+                      >
+                        Получить код
+                      </button>
+                      <button
+                        onClick={() => handleResetSessions(order)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium active:scale-95 transition-all"
+                        style={{ background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)", color: "hsl(262 83% 68%)" }}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        Сброс сессий
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             )}
           </main>
         </div>
-        {showCodeModal && selectedOrder && (
+
+        {showCodeModal && order.accountId !== null && (
           <GetCodeModal
-            accountId={selectedOrder.accountId}
-            phone={selectedOrder.accountPhone}
+            accountId={order.accountId!}
+            phone={order.accountPhone}
             onClose={() => setShowCodeModal(false)}
           />
         )}
@@ -356,85 +347,82 @@ export default function Orders() {
     );
   }
 
+  // Orders list view
   return (
     <Layout>
       <div className="p-4 space-y-4 pb-6">
         <div className="animate-fade-in-1">
-          <h1 className="text-xl font-bold tracking-tight">Заказы</h1>
+          <h1 className="text-xl font-bold tracking-tight">Мои заказы</h1>
           <p className="text-xs text-muted-foreground mt-0.5">История покупок</p>
         </div>
 
-        <div className="flex flex-col gap-2.5">
-          {isLoading ? (
-            Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 w-full rounded-2xl" />
-            ))
-          ) : userOrders.length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground animate-fade-in">
-              <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                style={{ background: "rgba(168,85,247,0.1)" }}
-              >
-                <ShoppingBag className="w-8 h-8" style={{ color: "hsl(262 83% 68%)" }} />
-              </div>
-              <p className="text-sm font-medium">Заказов пока нет</p>
-              <p className="text-xs mt-1 opacity-60">Купите первый аккаунт в каталоге</p>
-            </div>
-          ) : (
-            userOrders.map((o, i) => {
-              const statusStyle = STATUS_STYLES[o.status] ?? { bg: "rgba(168,85,247,0.1)", color: "hsl(262 83% 68%)" };
+        {isLoading ? (
+          <div className="space-y-3">
+            {[0,1,2].map(i => (
+              <div key={i} className="h-20 rounded-2xl bg-card animate-pulse" />
+            ))}
+          </div>
+        ) : userOrders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-in">
+            <ShoppingBag className="w-14 h-14 text-muted-foreground/30 mb-4" />
+            <p className="text-muted-foreground font-medium">Заказов пока нет</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">Перейдите в каталог, чтобы купить товар</p>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {userOrders.map((order, i) => {
+              const statusStyle = STATUS_STYLES[order.status] ?? { bg: "rgba(168,85,247,0.1)", color: "hsl(262 83% 68%)" };
+              const isOther = isOtherProductOrder(order);
+              const svgInfo = getOrderSvgIcon(order);
               return (
-                <div
-                  key={o.id}
-                  className="card-press rounded-2xl p-4 animate-fade-in cursor-pointer"
+                <button
+                  key={order.id}
+                  onClick={() => setSelectedOrder(order)}
+                  className="w-full text-left card-press rounded-2xl p-4 animate-fade-in cursor-pointer"
                   style={{
                     background: "hsl(var(--card))",
                     border: "1px solid rgba(168,85,247,0.12)",
                     animationDelay: `${i * 0.05}s`,
                   }}
-                  onClick={() => { setSelectedOrder(o); setShowCopyDropdown(false); }}
                 >
                   <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-                      style={{ background: "rgba(168,85,247,0.08)" }}
-                    >
-                      {o.accountCountry ? getFlag(o.accountCountry) : "📦"}
-                    </div>
+                    {svgInfo ? (
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ background: svgInfo.bg }}
+                        dangerouslySetInnerHTML={{ __html: `<div style="width:22px;height:22px">${svgInfo.svg}</div>` }}
+                      />
+                    ) : (
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
+                        style={{ background: "rgba(168,85,247,0.1)" }}
+                      >
+                        {getOrderIcon(order)}
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-semibold text-sm truncate">{o.accountCountry || `Заказ #${o.id}`}</span>
-                        {o.accountHasPremium && <span className="badge-premium flex-shrink-0">Premium</span>}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="text-[10px] text-muted-foreground">
-                          {format(new Date(o.createdAt), "d MMM yyyy, HH:mm", { locale: ru })}
-                        </span>
-                        {o.accountPhone && (
-                          <span className="text-[10px] text-muted-foreground font-mono">
-                            {o.accountPhone}
-                            {o.accountDcId ? ` · DC ${o.accountDcId}` : ""}
-                          </span>
-                        )}
+                      <div className="font-semibold text-sm">{getOrderTitle(order)}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        #{order.id} · {format(new Date(order.createdAt), "dd MMM", { locale: ru })}
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                      <span className="text-xs font-bold" style={{ color: "hsl(262 83% 70%)" }}>
-                        {o.amount > 0 ? `${o.amount} ★` : "Free"}
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <span className="text-sm font-bold" style={{ color: "hsl(262 83% 68%)" }}>
+                        {order.amount === 0 ? "Free" : `${order.amount} ★`}
                       </span>
                       <span
-                        className="text-[10px] font-semibold px-2 py-0.5 rounded-lg"
+                        className="text-[10px] font-medium px-2 py-0.5 rounded-full"
                         style={{ background: statusStyle.bg, color: statusStyle.color }}
                       >
-                        {STATUS_LABELS[o.status] ?? o.status}
+                        {STATUS_LABELS[order.status] ?? order.status}
                       </span>
                     </div>
                   </div>
-                </div>
+                </button>
               );
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )}
       </div>
     </Layout>
   );
