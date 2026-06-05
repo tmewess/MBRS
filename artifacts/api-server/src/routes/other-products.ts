@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, otherProductsTable, ordersTable } from "@workspace/db";
+import { db, otherProductsTable, ordersTable, userBalancesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
@@ -96,14 +96,29 @@ router.post("/other-products/:id/purchase", async (req, res): Promise<void> => {
     const [product] = await db.select().from(otherProductsTable).where(eq(otherProductsTable.id, id));
     if (!product || product.status !== "available") { res.status(404).json({ error: "Товар недоступен" }); return; }
 
+    const isFree = product.isFree === "true" || product.price === 0;
+
+    if (!isFree) {
+      const [balance] = await db.select().from(userBalancesTable).where(eq(userBalancesTable.telegramUserId, telegramUserId));
+      const currentBalance = balance?.balance ?? 0;
+      if (currentBalance < product.price) {
+        res.status(400).json({ error: "Insufficient balance", required: product.price, current: currentBalance });
+        return;
+      }
+      await db
+        .update(userBalancesTable)
+        .set({ balance: currentBalance - product.price, updatedAt: new Date() })
+        .where(eq(userBalancesTable.telegramUserId, telegramUserId));
+    }
+
     await db.update(otherProductsTable).set({ status: "sold", soldAt: new Date() }).where(eq(otherProductsTable.id, id));
 
     const [order] = await db.insert(ordersTable).values({
       telegramUserId,
       telegramUsername: telegramUsername ?? null,
-      status: "completed",
-      paymentMethod: "stars",
-      amount: product.price,
+      status: "delivered",
+      paymentMethod: isFree ? "free" : "balance",
+      amount: isFree ? 0 : product.price,
     }).returning();
 
     res.json({ success: true, orderId: order.id, product });
