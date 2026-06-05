@@ -126,6 +126,45 @@ async function runMigrations() {
         "created_at" timestamptz NOT NULL DEFAULT now(),
         "last_seen_at" timestamptz NOT NULL DEFAULT now()
       );
+      CREATE TABLE IF NOT EXISTS "other_products" (
+        "id" serial PRIMARY KEY,
+        "social_network" text NOT NULL,
+        "login" text,
+        "password" text,
+        "email" text,
+        "email_password" text,
+        "description" text,
+        "delivery_description" text,
+        "price" double precision NOT NULL DEFAULT 0,
+        "is_free" text NOT NULL DEFAULT 'false',
+        "status" text NOT NULL DEFAULT 'available',
+        "created_at" timestamptz NOT NULL DEFAULT now(),
+        "sold_at" timestamptz
+      );
+      CREATE TABLE IF NOT EXISTS "proxies" (
+        "id" serial PRIMARY KEY,
+        "ip" text NOT NULL,
+        "port" text NOT NULL,
+        "username" text,
+        "password" text,
+        "created_at" timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS "promo_codes" (
+        "id" serial PRIMARY KEY,
+        "code" text NOT NULL UNIQUE,
+        "discount_type" text NOT NULL DEFAULT 'fixed',
+        "discount_value" double precision NOT NULL DEFAULT 0,
+        "usage_limit" integer,
+        "used_count" integer NOT NULL DEFAULT 0,
+        "expires_at" timestamptz,
+        "is_active" boolean NOT NULL DEFAULT true,
+        "created_at" timestamptz NOT NULL DEFAULT now()
+      );
+      ALTER TABLE "bot_settings" ADD COLUMN IF NOT EXISTS "require_subscription" boolean NOT NULL DEFAULT false;
+      ALTER TABLE "bot_settings" ADD COLUMN IF NOT EXISTS "subscription_channel" text;
+      ALTER TABLE "bot_settings" ADD COLUMN IF NOT EXISTS "maintenance_mode" boolean NOT NULL DEFAULT false;
+      ALTER TABLE "bot_settings" ADD COLUMN IF NOT EXISTS "maintenance_message" text NOT NULL DEFAULT '🔧 Технические работы. Скоро вернёмся!';
+      ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "other_product_id" integer;
     `);
     logger.info("Database migrations completed.");
   } catch (err) {
