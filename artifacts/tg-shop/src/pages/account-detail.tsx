@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import { getTelegramUser } from "@/lib/telegram";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, Download, RotateCcw, Shield, ArrowLeft, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Copy, Download, RotateCcw, Star, ArrowLeft, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { GetCodeModal } from "@/components/get-code-modal";
 import { Confetti } from "@/components/confetti";
 
@@ -29,6 +29,7 @@ interface Account {
   status: string;
   lolzItemId: string | null;
   sessionId: number | null;
+  sessionData?: { phone: string | null; password: string | null; firstName: string | null } | null;
   spamBlock: string | null;
   origin: string | null;
   lastActivity: string | null;
@@ -135,6 +136,8 @@ export default function AccountDetail() {
     if (acc.userId) parts.push(`ID: ${acc.userId}`);
     if (acc.dcId) parts.push(`DC: ${acc.dcId}`);
     if (acc.hasPassword && acc.password) parts.push(`Пароль 2FA: ${acc.password}`);
+    if (acc.sessionData?.phone) parts.push(`Номер (бот): ${acc.sessionData.phone}`);
+    if (acc.sessionData?.password) parts.push(`Пароль (бот): ${acc.sessionData.password}`);
     if (acc.authKey) parts.push(`Auth Key: ${acc.authKey}`);
     navigator.clipboard.writeText(parts.join("\n"));
     toast({ title: "Скопировано", description: "Все данные аккаунта" });
@@ -361,6 +364,35 @@ export default function AccountDetail() {
               </div>
             )}
 
+            {/* Session bot account data */}
+            {acc.sessionData && (acc.sessionData.phone || acc.sessionData.password) && (
+              <div className="pt-1 border-t border-border/40 space-y-2">
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Аккаунт бота</div>
+                {acc.sessionData.phone && (
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Номер (бот):</label>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-muted/60 rounded-lg px-3 py-2.5 text-sm font-mono">{acc.sessionData.phone}</div>
+                      <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 active:scale-90 transition-transform duration-100" onClick={() => handleCopy(acc.sessionData!.phone!, "Номер бота")}>
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {acc.sessionData.password && (
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Пароль (бот):</label>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2.5 text-sm font-mono text-amber-400">{acc.sessionData.password}</div>
+                      <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 active:scale-90 transition-transform duration-100" onClick={() => handleCopy(acc.sessionData!.password!, "Пароль бота")}>
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="relative">
               <Button
                 variant="outline"
@@ -456,7 +488,7 @@ export default function AccountDetail() {
                 <span className="text-green-400">Бесплатно</span>
               ) : (
                 <span className="text-primary flex items-center gap-1">
-                  <Shield className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                  <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                   {account.price} Stars
                 </span>
               )}
@@ -506,7 +538,7 @@ export default function AccountDetail() {
 
         {account.isFree !== "true" && account.price !== 0 && (
           <div className="flex items-center gap-2 bg-card border border-border rounded-lg p-3">
-            <Shield className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+            <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
             <span className="text-sm">Ваш баланс: <strong>{balance} Stars</strong></span>
           </div>
         )}
@@ -550,7 +582,7 @@ export default function AccountDetail() {
                   <div className="relative">
                     <div className="w-16 h-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <Shield className="w-6 h-6 text-primary" />
+                      <Star className="w-6 h-6 text-yellow-400 fill-yellow-400" />
                     </div>
                   </div>
                   <div className="text-center">
@@ -598,7 +630,7 @@ export default function AccountDetail() {
                         <div className="font-semibold text-sm">
                           {account.isFree === "true" || account.price === 0
                             ? <span className="text-green-400">Бесплатно</span>
-                            : <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" /> {account.price} Stars</span>
+                            : <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" /> {account.price} Stars</span>
                           }
                         </div>
                       </div>

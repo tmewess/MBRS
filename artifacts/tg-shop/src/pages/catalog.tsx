@@ -324,62 +324,61 @@ export default function Catalog() {
                     }}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1.5 flex-1 min-w-0">
-                        {/* Description on top */}
-                        {acc.description ? (
-                          <div className="font-semibold text-sm truncate">{acc.description}</div>
-                        ) : (
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-lg leading-none">{getFlag(acc.country)}</span>
-                            <span className="font-semibold text-sm">{acc.country || "Другая"}</span>
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        {/* Country flag on the left */}
+                        <span className="text-2xl leading-none mt-0.5 shrink-0">
+                          {COUNTRY_FLAGS[acc.country] || "🏳️"}
+                        </span>
+                        <div className="space-y-1.5 flex-1 min-w-0">
+                          {/* Description top, country below */}
+                          {acc.description ? (
+                            <>
+                              <div className="font-semibold text-sm truncate">{acc.description}</div>
+                              <div className="text-xs text-muted-foreground">{acc.country || "Другая"}</div>
+                            </>
+                          ) : (
+                            <div className="font-semibold text-sm">{acc.country || "Другая"}</div>
+                          )}
+                          {/* Badges */}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {acc.hasPremium && <span className="badge-premium">Premium</span>}
+                            {acc.hasPassword && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
+                                style={{ background: "rgba(251,146,60,0.15)", color: "#f97316" }}>
+                                2FA
+                              </span>
+                            )}
+                            {(acc.isFree === "true" || acc.price === 0) && (
+                              <span className="badge-free">Free</span>
+                            )}
                           </div>
-                        )}
-                        {/* Badges */}
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {acc.hasPremium && <span className="badge-premium">Premium</span>}
-                          {acc.hasPassword && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
-                              style={{ background: "rgba(251,146,60,0.15)", color: "#f97316" }}>
-                              2FA
-                            </span>
-                          )}
-                          {(acc.isFree === "true" || acc.price === 0) && (
-                            <span className="badge-free">Free</span>
-                          )}
-                        </div>
-                        {/* Country bottom (only if description shown above) */}
-                        {acc.description && (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm leading-none">{getFlag(acc.country)}</span>
-                            <span className="text-xs text-muted-foreground">{acc.country || "Другая"}</span>
+                          {/* DC / ID / Auto-delivery row */}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {acc.dcId && (
+                              <span
+                                className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                style={{ background: "rgba(168,85,247,0.12)", color: "hsl(262 83% 68%)" }}
+                              >
+                                DC {acc.dcId}
+                              </span>
+                            )}
+                            {getIdDigitLabel(acc.userId) && (
+                              <span
+                                className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                style={{ background: "rgba(168,85,247,0.12)", color: "hsl(262 83% 68%)" }}
+                              >
+                                {getIdDigitLabel(acc.userId)}
+                              </span>
+                            )}
+                            {(acc.sessionId || acc.lolzItemId) && (
+                              <span
+                                className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                style={{ background: "rgba(16,185,129,0.12)", color: "#10b981" }}
+                              >
+                                Авто-выдача
+                              </span>
+                            )}
                           </div>
-                        )}
-                        {/* DC / ID / Auto-delivery row */}
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {acc.dcId && (
-                            <span
-                              className="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                              style={{ background: "rgba(168,85,247,0.12)", color: "hsl(262 83% 68%)" }}
-                            >
-                              DC {acc.dcId}
-                            </span>
-                          )}
-                          {getIdDigitLabel(acc.userId) && (
-                            <span
-                              className="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                              style={{ background: "rgba(168,85,247,0.12)", color: "hsl(262 83% 68%)" }}
-                            >
-                              {getIdDigitLabel(acc.userId)}
-                            </span>
-                          )}
-                          {(acc.sessionId || acc.lolzItemId) && (
-                            <span
-                              className="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                              style={{ background: "rgba(16,185,129,0.12)", color: "#10b981" }}
-                            >
-                              Авто-выдача
-                            </span>
-                          )}
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2 flex-shrink-0">

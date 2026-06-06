@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
-import { db, userBalancesTable, accountsTable, ordersTable, botSettingsTable } from "@workspace/db";
+import { db, userBalancesTable, accountsTable, ordersTable, botSettingsTable, telegramSessionsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -225,7 +225,16 @@ router.post("/balance/purchase", async (req, res): Promise<void> => {
   await db.update(accountsTable).set({ status: "sold", soldAt: new Date() }).where(eq(accountsTable.id, accountId));
   await db.update(ordersTable).set({ status: "delivered", deliveredAt: new Date() }).where(eq(ordersTable.id, order.id));
 
-  res.json({ success: true, orderId: order.id, account });
+  // Fetch session data if account has one
+  let sessionData: { phone: string | null; password: string | null; firstName: string | null } | null = null;
+  if (account.sessionId) {
+    const [session] = await db.select().from(telegramSessionsTable).where(eq(telegramSessionsTable.id, account.sessionId));
+    if (session) {
+      sessionData = { phone: session.phone ?? null, password: session.password ?? null, firstName: session.firstName ?? null };
+    }
+  }
+
+  res.json({ success: true, orderId: order.id, account: { ...account, sessionData } });
 });
 
 export default router;
