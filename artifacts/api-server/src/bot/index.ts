@@ -179,13 +179,58 @@ export async function startBot() {
     }
 
     const settings = await getBotSettings();
-    const accounts = await getAvailableAccounts();
     const userId = ctx.from?.id;
     const keyboard = await buildMainKeyboard(settings, userId);
-    await ctx.reply(
-      settings.welcomeMessage + `\n\nДоступно аккаунтов: ${accounts.length}`,
-      { parse_mode: "Markdown", reply_markup: keyboard }
-    );
+
+    try {
+      await ctx.replyWithSticker("CAACAgQAAxkBAAFLp-hqJBeFIbbMZ4jdPZz61RfovlEJqAACXRkAAljwgVGu26mijdyWvDsE");
+    } catch {}
+
+    const welcomeText =
+      `Добро пожаловать в Void Account! 🔥\n\n` +
+      `Качественные аккаунты популярных сервисов с мгновенной выдачей. Наш сервис - это сочетание надежности, доступных цен и круглосуточной поддержки.\n\n` +
+      `🛒 Наши преимущества:\n\n` +
+      `⚪️ Автовыдача 24/7\n` +
+      `⚪️ Большой выбор аккаунтов Telegram и других популярных сервисов.\n` +
+      `⚪️ Поддерживаем переводы через Crypto Bot и Telegram Stars.\n` +
+      `⚪️ Оперативно ответим на все ваши вопросы.\n\n` +
+      `🔗 Полезные ссылки:\n` +
+      `💼 Наш канал: @VoidAccs\n` +
+      `📊 Отзывы: @VoidRepp\n\n` +
+      `Выберите нужный пункт в меню ниже, чтобы начать работу👇`;
+
+    function findAllEmoji(text: string, emoji: string): number[] {
+      const offsets: number[] = [];
+      let from = 0;
+      while (true) {
+        const idx = text.indexOf(emoji, from);
+        if (idx === -1) break;
+        offsets.push(idx);
+        from = idx + emoji.length;
+      }
+      return offsets;
+    }
+
+    type CustomEmojiEntity = { type: "custom_emoji"; offset: number; length: number; custom_emoji_id: string };
+    const emojiDefs: { emoji: string; id: string }[] = [
+      { emoji: "🔥", id: "5893185207355315979" },
+      { emoji: "🛒", id: "5258024802010026053" },
+      { emoji: "⚪️", id: "5339113303522161846" },
+      { emoji: "🔗", id: "5902449142575141204" },
+      { emoji: "💼", id: "5893255507380014983" },
+      { emoji: "📊", id: "5895444149699612825" },
+      { emoji: "👇", id: "5231102735817918643" },
+    ];
+
+    const entities: CustomEmojiEntity[] = [];
+    for (const { emoji, id } of emojiDefs) {
+      for (const offset of findAllEmoji(welcomeText, emoji)) {
+        entities.push({ type: "custom_emoji", offset, length: emoji.length, custom_emoji_id: id });
+      }
+    }
+    entities.sort((a, b) => a.offset - b.offset);
+
+    await ctx.reply(welcomeText, { entities, reply_markup: keyboard });
   });
 
   bot.command("topup", requireSubscription, async (ctx) => {
