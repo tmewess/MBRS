@@ -59,7 +59,7 @@ function getShopUrl(): string {
   if (process.env["SHOP_URL"]) return process.env["SHOP_URL"];
   const domain = process.env["REPLIT_DEV_DOMAIN"] ?? process.env["REPLIT_DOMAINS"]?.split(",")[0];
   if (domain) return `https://${domain}/tg-shop/`;
-  logger.warn("SHOP_URL not set and no Replit domain found — bot buttons will use placeholder URL");
+  logger.warn("SHOP_URL not set and no Replit domain found -- bot buttons will use placeholder URL");
   return "https://example.com/tg-shop/";
 }
 
@@ -67,7 +67,7 @@ function getAdminUrl(): string {
   if (process.env["ADMIN_URL"]) return process.env["ADMIN_URL"];
   const domain = process.env["REPLIT_DEV_DOMAIN"] ?? process.env["REPLIT_DOMAINS"]?.split(",")[0];
   if (domain) return `https://${domain}/admin-panel/`;
-  logger.warn("ADMIN_URL not set and no Replit domain found — admin button will use placeholder URL");
+  logger.warn("ADMIN_URL not set and no Replit domain found -- admin button will use placeholder URL");
   return "https://example.com/admin-panel/";
 }
 
@@ -187,57 +187,28 @@ export async function startBot() {
     } catch {}
 
     const welcomeText =
-      `Добро пожаловать в Void Account! 🔥\n\n` +
-      `Качественные аккаунты популярных сервисов с мгновенной выдачей. Наш сервис - это сочетание надежности, доступных цен и круглосуточной поддержки.\n\n` +
-      `🛒 Наши преимущества:\n\n` +
-      `⚪️ Автовыдача 24/7\n` +
-      `⚪️ Большой выбор аккаунтов Telegram и других популярных сервисов.\n` +
-      `⚪️ Поддерживаем переводы через Crypto Bot и Telegram Stars.\n` +
-      `⚪️ Оперативно ответим на все ваши вопросы.\n\n` +
-      `🔗 Полезные ссылки:\n` +
-      `💼 Наш канал: @VoidAccs\n` +
-      `📊 Отзывы: @VoidRepp\n\n` +
-      `Выберите нужный пункт в меню ниже, чтобы начать работу👇`;
+      `Добро пожаловать в <b>Void Account!</b> <tg-emoji emoji-id='5893185207355315979'>🔥</tg-emoji>\n\n` +
+      `Качественные аккаунты популярных сервисов с мгновенной выдачей. Наш сервис - это сочетание надёжности, доступных цен и круглосуточной поддержки.\n\n` +
+      `<tg-emoji emoji-id='5258024802010026053'>🛒</tg-emoji> <b>Наши преимущества:</b>\n\n` +
+      `<blockquote>` +
+      `<tg-emoji emoji-id='5339113303522161846'>⚪</tg-emoji> Автовыдача 24/7\n` +
+      `<tg-emoji emoji-id='5339113303522161846'>⚪</tg-emoji> Большой выбор аккаунтов Telegram и других популярных сервисов.\n` +
+      `<tg-emoji emoji-id='5339113303522161846'>⚪</tg-emoji> Поддерживаем переводы через Crypto Bot и Telegram Stars.\n` +
+      `<tg-emoji emoji-id='5339113303522161846'>⚪</tg-emoji> Оперативно ответим на все ваши вопросы.` +
+      `</blockquote>\n\n` +
+      `<tg-emoji emoji-id='5902449142575141204'>🔗</tg-emoji> <b>Полезные ссылки:</b>\n` +
+      `<tg-emoji emoji-id='5893255507380014983'>💼</tg-emoji> Наш канал: @VoidAccs\n` +
+      `<tg-emoji emoji-id='5895444149699612825'>📊</tg-emoji> Отзывы: @VoidRepp\n\n` +
+      `<b>Выберите нужный пункт в меню ниже, чтобы начать работу</b><tg-emoji emoji-id='5231102735817918643'>👇</tg-emoji>`;
 
-    function findAllEmoji(text: string, emoji: string): number[] {
-      const offsets: number[] = [];
-      let from = 0;
-      while (true) {
-        const idx = text.indexOf(emoji, from);
-        if (idx === -1) break;
-        offsets.push(idx);
-        from = idx + emoji.length;
-      }
-      return offsets;
-    }
-
-    type CustomEmojiEntity = { type: "custom_emoji"; offset: number; length: number; custom_emoji_id: string };
-    const emojiDefs: { emoji: string; id: string }[] = [
-      { emoji: "🔥", id: "5893185207355315979" },
-      { emoji: "🛒", id: "5258024802010026053" },
-      { emoji: "⚪️", id: "5339113303522161846" },
-      { emoji: "🔗", id: "5902449142575141204" },
-      { emoji: "💼", id: "5893255507380014983" },
-      { emoji: "📊", id: "5895444149699612825" },
-      { emoji: "👇", id: "5231102735817918643" },
-    ];
-
-    const entities: CustomEmojiEntity[] = [];
-    for (const { emoji, id } of emojiDefs) {
-      for (const offset of findAllEmoji(welcomeText, emoji)) {
-        entities.push({ type: "custom_emoji", offset, length: emoji.length, custom_emoji_id: id });
-      }
-    }
-    entities.sort((a, b) => a.offset - b.offset);
-
-    await ctx.reply(welcomeText, { entities, reply_markup: keyboard });
+    await ctx.reply(welcomeText, { parse_mode: "HTML", reply_markup: keyboard });
   });
 
   bot.command("topup", requireSubscription, async (ctx) => {
     const args = ctx.message?.text?.split(" ") ?? [];
     const amount = args[1] ? parseInt(args[1], 10) : 50;
     if (isNaN(amount) || amount < 50) {
-      await ctx.reply("Минимальное пополнение — 50 Stars. Используйте: /topup 100");
+      await ctx.reply("Минимальное пополнение -- 50 Stars. Используйте: /topup 100");
       return;
     }
     const userId = String(ctx.from?.id ?? "unknown");
@@ -457,7 +428,7 @@ export async function startBot() {
         if (code) {
           await ctx.api.sendMessage(buyerChatId, `🔑 *Код подтверждения:* \`${code}\`\n\nВведи его при входе в Telegram.`, { parse_mode: "Markdown" });
         } else {
-          await ctx.api.sendMessage(buyerChatId, "❌ Код не найден в последних сообщениях. Попробуй войти в аккаунт — Telegram пришлёт код, затем нажми кнопку снова.");
+          await ctx.api.sendMessage(buyerChatId, "❌ Код не найден в последних сообщениях. Попробуй войти в аккаунт -- Telegram пришлёт код, затем нажми кнопку снова.");
         }
       } catch (err) {
         logger.error({ err }, "get-code callback failed");
@@ -530,7 +501,7 @@ async function deliverAccount(ctx: any, account: any, orderId: number) {
         if (filePath && fs.existsSync(filePath)) {
           const file = new InputFile(filePath, `tdata_${account.phone ?? account.id}.zip`);
           await ctx.replyWithDocument(file, {
-            caption: `tdata — аккаунт ${account.phone ?? "#" + account.id}`,
+            caption: `tdata -- аккаунт ${account.phone ?? "#" + account.id}`,
           });
         }
         return;
@@ -559,7 +530,7 @@ async function deliverAccount(ctx: any, account: any, orderId: number) {
       { parse_mode: "Markdown", reply_markup: keyboard }
     );
     await ctx.replyWithDocument(file, {
-      caption: `tdata — аккаунт ${account.phone ?? "#" + account.id}`,
+      caption: `tdata -- аккаунт ${account.phone ?? "#" + account.id}`,
     });
     return;
   }
