@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import { getTelegramUser } from "@/lib/telegram";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, Download, RotateCcw, Shield, ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
+import { Copy, Download, RotateCcw, Shield, ArrowLeft, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { GetCodeModal } from "@/components/get-code-modal";
 import { Confetti } from "@/components/confetti";
 
@@ -85,6 +85,28 @@ export default function AccountDetail() {
   const [showCopyDropdown, setShowCopyDropdown] = useState(false);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [validResult, setValidResult] = useState<{ valid: boolean; spamBlock: string; hasPremium: boolean } | null>(null);
+
+  const handleValidate = async () => {
+    if (!account?.sessionId) return;
+    setValidating(true);
+    setValidResult(null);
+    try {
+      const res = await fetch(`/api/sessions/${account.sessionId}/check`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        const spam = data.spamBlock ?? "Отсутствует";
+        const hasSpam = spam !== "Отсутствует" && spam !== "0" && spam !== "none";
+        setValidResult({ valid: !hasSpam, spamBlock: spam, hasPremium: data.hasPremium ?? account.hasPremium });
+      } else {
+        toast({ title: "Не удалось проверить", description: data.error ?? "Ошибка валидации", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Ошибка", description: "Нет подключения", variant: "destructive" });
+    }
+    setValidating(false);
+  };
 
   useEffect(() => {
     fetch(`/api/accounts/${accountId}`)
@@ -426,6 +448,43 @@ export default function AccountDetail() {
             <Shield className="w-5 h-5 text-yellow-400 fill-yellow-400" />
             <span className="text-sm">Ваш баланс: <strong>{balance} Stars</strong></span>
           </div>
+        )}
+
+        {/* Validation check — only for accounts with a session */}
+        {account.sessionId && (
+          <Card className="p-4 bg-card/80 border-border/40 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Проверка аккаунта</div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs active:scale-95 transition-transform duration-100"
+                onClick={handleValidate}
+                disabled={validating}
+              >
+                {validating ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Проверяю...</> : "Проверить"}
+              </Button>
+            </div>
+            {validResult && (
+              <div className={`flex items-start gap-2.5 rounded-lg p-3 text-sm ${validResult.valid ? "bg-green-500/10 border border-green-500/20" : "bg-red-500/10 border border-red-500/20"}`}>
+                {validResult.valid
+                  ? <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
+                  : <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                }
+                <div className="space-y-1">
+                  <div className={`font-semibold ${validResult.valid ? "text-green-400" : "text-red-400"}`}>
+                    {validResult.valid ? "Аккаунт валидный" : "Есть ограничения"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Спамблок: {validResult.spamBlock} · Premium: {validResult.hasPremium ? "Да" : "Нет"}
+                  </div>
+                </div>
+              </div>
+            )}
+            {!validResult && !validating && (
+              <p className="text-xs text-muted-foreground">Нажмите «Проверить» чтобы узнать статус аккаунта перед покупкой (как на LolzTeam).</p>
+            )}
+          </Card>
         )}
       </div>
 

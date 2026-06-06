@@ -482,4 +482,49 @@ router.post("/sessions/:id/get-code", async (req, res): Promise<void> => {
   }
 });
 
+// Alias for admin panel "Получить код" button
+router.post("/sessions/:id/request-code", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [session] = await db.select().from(telegramSessionsTable).where(eq(telegramSessionsTable.id, id));
+  if (!session?.sessionString) {
+    res.status(404).json({ error: "Сессия не найдена" });
+    return;
+  }
+
+  const { apiId, apiHash } = await getApiCredentials();
+  if (!apiId || !apiHash) { res.status(503).json({ error: "API ID/Hash не настроен" }); return; }
+
+  let client: TelegramClient | null = null;
+  try {
+    const proxy = await getNextProxy();
+    client = new TelegramClient(new StringSession(session.sessionString), apiId, apiHash, {
+      connectionRetries: 2,
+      ...(proxy ? { proxy: buildProxyConfig(proxy) } : {}),
+    });
+    await client.connect();
+
+    const messages = await client.getMessages(777000, { limit: 10 }) as any[];
+    await client.disconnect();
+
+    let code: string | null = null;
+    for (const msg of messages) {
+      const text: string = msg?.message ?? "";
+      const match = text.match(/\b(\d{5,6})\b/);
+      if (match) { code = match[1]; break; }
+    }
+
+    if (code) {
+      res.json({ success: true, code });
+    } else {
+      res.json({ success: true, code: null, message: "Код не найден в последних сообщениях" });
+    }
+  } catch (err: any) {
+    await client?.disconnect().catch(() => {});
+    logger.error({ err }, "request-code failed");
+    res.status(500).json({ success: false, error: err?.errorMessage ?? err?.message ?? "Ошибка" });
+  }
+});
+
 export default router;

@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Users, ShoppingCart, Settings, LogOut, Menu, X, Globe, Smartphone, Newspaper, ShieldCheck, UserCheck, Package } from "lucide-react";
+import { LayoutDashboard, Users, ShoppingCart, Settings, LogOut, Menu, X, Globe, Smartphone, Newspaper, ShieldCheck, UserCheck, Package, Tag, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface AppLayoutProps {
@@ -21,6 +21,8 @@ export function AppLayout({ children, username, onLogout }: AppLayoutProps) {
     { href: "/users", label: "Пользователи", icon: Globe },
     { href: "/sessions", label: "Сессии", icon: Smartphone },
     { href: "/news", label: "Новости", icon: Newspaper },
+    { href: "/promo", label: "Промокоды", icon: Tag },
+    { href: "/faq", label: "FAQ", icon: HelpCircle },
     { href: "/admins", label: "Администраторы", icon: ShieldCheck },
     { href: "/settings", label: "Настройки", icon: Settings },
   ];

@@ -17,6 +17,8 @@ import News from "@/pages/news";
 import Admins from "@/pages/admins";
 import Accounts from "@/pages/accounts";
 import OtherProducts from "@/pages/other-products";
+import Promo from "@/pages/promo";
+import Faq from "@/pages/faq";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +50,8 @@ function Router() {
         <Route path="/admins" component={Admins} />
         <Route path="/accounts" component={Accounts} />
         <Route path="/other-products" component={OtherProducts} />
+        <Route path="/promo" component={Promo} />
+        <Route path="/faq" component={Faq} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

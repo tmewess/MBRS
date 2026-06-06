@@ -316,7 +316,7 @@ export async function startBot() {
   });
 
   bot.command("refund", async (ctx) => {
-    if (!isAdmin(ctx.from?.id)) return;
+    if (!await isAdmin(ctx.from?.id)) return;
     const args = ctx.message?.text?.split(" ") ?? [];
     const orderId = args[1] ? parseInt(args[1], 10) : null;
     if (!orderId || isNaN(orderId)) {

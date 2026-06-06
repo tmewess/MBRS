@@ -9,6 +9,7 @@ import OtherProductDetail from "@/pages/other-product-detail";
 import Orders from "@/pages/orders";
 import News from "@/pages/news";
 import Profile from "@/pages/profile";
+import FaqPage from "@/pages/faq";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ function App() {
             <Route path="/orders" component={Orders} />
             <Route path="/news" component={News} />
             <Route path="/profile" component={Profile} />
+            <Route path="/faq" component={FaqPage} />
             <Route component={NotFound} />
           </Switch>
         </WouterRouter>

@@ -13,6 +13,7 @@ import adminsRouter from "./admins";
 import proxiesRouter from "./proxies";
 import otherProductsRouter from "./other-products";
 import promoRouter from "./promo";
+import faqRouter from "./faq";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(adminsRouter);
 router.use(proxiesRouter);
 router.use(otherProductsRouter);
 router.use(promoRouter);
+router.use(faqRouter);
 
 export default router;

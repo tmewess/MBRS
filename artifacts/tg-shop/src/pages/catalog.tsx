@@ -396,7 +396,7 @@ export default function Catalog() {
                 const svgIcon = getSocialIconSvg(product.socialNetwork);
                 const isFree = product.isFree === "true" || product.price === 0;
                 return (
-                  <Link key={product.id} href={`/other-product/${product.id}`}>
+                  <Link key={product.id} href={`/other/${product.id}`}>
                     <div
                       className="card-press rounded-2xl p-4 animate-fade-in cursor-pointer"
                       style={{

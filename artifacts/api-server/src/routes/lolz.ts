@@ -204,7 +204,7 @@ router.get("/lolz/accounts", async (req, res): Promise<void> => {
     return;
   }
 
-  const category = " telegram";
+  const category = "telegram";
   const params = new URLSearchParams();
   params.set("category", category);
   params.set("page", "1");

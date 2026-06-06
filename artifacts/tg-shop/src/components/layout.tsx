@@ -218,6 +218,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
+      {/* FAQ floating button */}
+      <Link
+        href="/faq"
+        className="fixed z-40 select-none focus:outline-none active:scale-90 transition-transform duration-100"
+        style={{ bottom: 80, right: 16 }}
+        aria-label="FAQ"
+      >
+        <div
+          className="flex items-center justify-center w-11 h-11 rounded-full shadow-lg"
+          style={{
+            background: "linear-gradient(135deg,#7c3aed,#a855f7)",
+            boxShadow: "0 4px 20px rgba(124,58,237,0.45)",
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <path d="M12 17h.01"/>
+          </svg>
+        </div>
+      </Link>
+
       {/* Bottom Nav */}
       <nav
         className="fixed bottom-0 left-0 right-0 z-50 pb-safe"

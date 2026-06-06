@@ -76,7 +76,6 @@ async function runMigrations() {
         "updated_at" timestamptz NOT NULL DEFAULT now(),
         "created_at" timestamptz NOT NULL DEFAULT now()
       );
-      DROP TABLE IF EXISTS "telegram_sessions";
       CREATE TABLE "telegram_sessions" (
         "id" serial PRIMARY KEY,
         "phone" text UNIQUE,
@@ -100,7 +99,6 @@ async function runMigrations() {
         "updated_at" timestamptz NOT NULL DEFAULT now(),
         "created_at" timestamptz NOT NULL DEFAULT now()
       );
-      DROP TABLE IF EXISTS "admins";
       CREATE TABLE "admins" (
         "id" serial PRIMARY KEY,
         "telegram_user_id" text NOT NULL UNIQUE,

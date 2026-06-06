@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Eye } from "lucide-react";
+import { Eye, Key } from "lucide-react";
 
 interface OrderRow {
   id: number;
@@ -64,6 +64,8 @@ export default function Orders() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<OrderRow | null>(null);
+  const [fetchingCode, setFetchingCode] = useState(false);
+  const [codeResult, setCodeResult] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -93,6 +95,28 @@ export default function Orders() {
   };
 
   const filtered = statusFilter === "all" ? orders : orders.filter((o) => o.status === statusFilter);
+
+  const handleGetCode = async (sessionId: number) => {
+    setFetchingCode(true);
+    setCodeResult(null);
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/request-code`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        if (data.code) {
+          setCodeResult(data.code);
+          toast({ title: "Код получен", description: `Код входа: ${data.code}` });
+        } else {
+          toast({ title: "Запрос отправлен", description: "Код будет отправлен на номер аккаунта. Проверьте через несколько секунд." });
+        }
+      } else {
+        throw new Error(data.error ?? "Ошибка запроса кода");
+      }
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+    setFetchingCode(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -255,6 +279,23 @@ export default function Orders() {
                   <Button variant="outline" className="flex-1" onClick={() => handleUpdateStatus(selectedOrder.id, "cancelled")}>
                     Отменить
                   </Button>
+                )}
+                {selectedOrder.accountSessionId && (
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-1.5"
+                    onClick={() => handleGetCode(selectedOrder.accountSessionId!)}
+                    disabled={fetchingCode}
+                  >
+                    <Key className="w-4 h-4" />
+                    {fetchingCode ? "..." : "Получить код"}
+                  </Button>
+                )}
+                {codeResult && (
+                  <div className="w-full mt-1 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+                    <div className="text-xs text-muted-foreground mb-1">Код входа</div>
+                    <div className="font-mono text-2xl font-bold tracking-widest text-green-400">{codeResult}</div>
+                  </div>
                 )}
                 <Button variant="outline" onClick={() => setSelectedOrder(null)}>
                   Закрыть
