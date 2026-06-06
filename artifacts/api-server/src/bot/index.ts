@@ -5,12 +5,10 @@ import { db, accountsTable, ordersTable, botSettingsTable, userBalancesTable, ne
 import { TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
 import { logger } from "../lib/logger";
-import { fetchLolzConfirmCode, fetchLolzAccountData, downloadLolzFile, resetLolzSessions } from "../routes/lolz";
+import { fetchLolzConfirmCode, downloadLolzFile, resetLolzSessions } from "../routes/lolz";
 import { getNextProxy, buildProxyConfig } from "../lib/proxy-manager";
 
 let bot: Bot | null = null;
-
-const CHANNEL_INVITE_URL = "https://t.me/+fGDqJGbue980ODJl";
 
 async function isSubscribed(userId: number, channelUsername: string): Promise<boolean> {
   if (!bot) return true;
@@ -59,7 +57,7 @@ function getShopUrl(): string {
   if (process.env["SHOP_URL"]) return process.env["SHOP_URL"];
   const domain = process.env["REPLIT_DEV_DOMAIN"] ?? process.env["REPLIT_DOMAINS"]?.split(",")[0];
   if (domain) return `https://${domain}/tg-shop/`;
-  logger.warn("SHOP_URL not set and no Replit domain found -- bot buttons will use placeholder URL");
+  logger.warn("SHOP_URL not set and no Replit domain found — bot buttons will use placeholder URL");
   return "https://example.com/tg-shop/";
 }
 
@@ -67,7 +65,7 @@ function getAdminUrl(): string {
   if (process.env["ADMIN_URL"]) return process.env["ADMIN_URL"];
   const domain = process.env["REPLIT_DEV_DOMAIN"] ?? process.env["REPLIT_DOMAINS"]?.split(",")[0];
   if (domain) return `https://${domain}/admin-panel/`;
-  logger.warn("ADMIN_URL not set and no Replit domain found -- admin button will use placeholder URL");
+  logger.warn("ADMIN_URL not set and no Replit domain found — admin button will use placeholder URL");
   return "https://example.com/admin-panel/";
 }
 
@@ -91,15 +89,6 @@ async function getBotSettings() {
   return settings;
 }
 
-async function getAvailableAccounts() {
-  return db.select().from(accountsTable).where(eq(accountsTable.status, "available"));
-}
-
-async function getUserBalance(telegramUserId: string): Promise<number> {
-  const [row] = await db.select().from(userBalancesTable).where(eq(userBalancesTable.telegramUserId, telegramUserId));
-  return row?.balance ?? 0;
-}
-
 async function addToBalance(telegramUserId: string, amount: number) {
   const [existing] = await db.select().from(userBalancesTable).where(eq(userBalancesTable.telegramUserId, telegramUserId));
   if (existing) {
@@ -110,16 +99,6 @@ async function addToBalance(telegramUserId: string, amount: number) {
   } else {
     await db.insert(userBalancesTable).values({ telegramUserId, balance: amount }).returning();
   }
-}
-
-async function deductFromBalance(telegramUserId: string, amount: number): Promise<boolean> {
-  const [existing] = await db.select().from(userBalancesTable).where(eq(userBalancesTable.telegramUserId, telegramUserId));
-  if (!existing || existing.balance < amount) return false;
-  await db
-    .update(userBalancesTable)
-    .set({ balance: existing.balance - amount, updatedAt: new Date() })
-    .where(eq(userBalancesTable.telegramUserId, telegramUserId));
-  return true;
 }
 
 async function notifyAdmin(text: string) {
@@ -208,7 +187,7 @@ export async function startBot() {
     const args = ctx.message?.text?.split(" ") ?? [];
     const amount = args[1] ? parseInt(args[1], 10) : 50;
     if (isNaN(amount) || amount < 50) {
-      await ctx.reply("Минимальное пополнение -- 50 Stars. Используйте: /topup 100");
+      await ctx.reply("Минимальное пополнение — 50 Stars. Используйте: /topup 100");
       return;
     }
     const userId = String(ctx.from?.id ?? "unknown");
@@ -289,7 +268,7 @@ export async function startBot() {
 
     if (payload.type === "balance_topup" && payload.amount) {
       await addToBalance(telegramUserId, payload.amount);
-      await ctx.reply(`Готово! *Баланс пополнен!*\n\nStars +${payload.amount} Stars зачислены на ваш счёт.`);
+      await ctx.reply(`Готово! *Баланс пополнен!*\n\n+${payload.amount} Stars зачислены на ваш счёт.`, { parse_mode: "Markdown" });
       return;
     }
 
@@ -314,6 +293,11 @@ export async function startBot() {
       amount: account.price,
       paymentId: payment.telegram_payment_charge_id,
     }).returning();
+
+    if (!order) {
+      await ctx.reply("(!) Оплата получена, но не удалось создать заказ. Обратитесь в поддержку.");
+      return;
+    }
 
     await db.update(accountsTable).set({ status: "sold", soldAt: new Date() }).where(eq(accountsTable.id, accountId));
     await db.update(ordersTable).set({ status: "delivered", deliveredAt: new Date() }).where(eq(ordersTable.id, order.id));
@@ -376,6 +360,11 @@ export async function startBot() {
       const accountId = parseInt(parts[1] ?? "", 10);
       const buyerChatId = parseInt(parts[2] ?? "", 10);
 
+      if (isNaN(accountId) || isNaN(buyerChatId)) {
+        await ctx.answerCallbackQuery({ text: "Некорректные данные", show_alert: true });
+        return;
+      }
+
       if (ctx.from.id !== buyerChatId) {
         await ctx.answerCallbackQuery({ text: "Нет доступа", show_alert: true });
         return;
@@ -383,6 +372,7 @@ export async function startBot() {
 
       await ctx.answerCallbackQuery({ text: "⏳ Запрашиваю код из сессии..." });
 
+      let client: TelegramClient | null = null;
       try {
         const [account] = await db.select().from(accountsTable).where(eq(accountsTable.id, accountId));
         if (!account?.sessionId) {
@@ -406,14 +396,13 @@ export async function startBot() {
         }
 
         const proxy = await getNextProxy();
-        const client = new TelegramClient(new StringSession(session.sessionString), apiId, apiHash, {
+        client = new TelegramClient(new StringSession(session.sessionString), apiId, apiHash, {
           connectionRetries: 2,
           ...(proxy ? { proxy: buildProxyConfig(proxy) } : {}),
         });
         await client.connect();
 
         const messages = await client.getMessages(777000, { limit: 10 }) as any[];
-        await client.disconnect();
 
         let code: string | null = null;
         for (const msg of messages) {
@@ -428,11 +417,13 @@ export async function startBot() {
         if (code) {
           await ctx.api.sendMessage(buyerChatId, `🔑 *Код подтверждения:* \`${code}\`\n\nВведи его при входе в Telegram.`, { parse_mode: "Markdown" });
         } else {
-          await ctx.api.sendMessage(buyerChatId, "❌ Код не найден в последних сообщениях. Попробуй войти в аккаунт -- Telegram пришлёт код, затем нажми кнопку снова.");
+          await ctx.api.sendMessage(buyerChatId, "❌ Код не найден в последних сообщениях. Попробуй войти в аккаунт — Telegram пришлёт код, затем нажми кнопку снова.");
         }
       } catch (err) {
         logger.error({ err }, "get-code callback failed");
         await ctx.api.sendMessage(buyerChatId, "❌ Ошибка при получении кода. Попробуй позже или обратись в поддержку.");
+      } finally {
+        await client?.disconnect().catch(() => {});
       }
       return;
     }
@@ -501,7 +492,7 @@ async function deliverAccount(ctx: any, account: any, orderId: number) {
         if (filePath && fs.existsSync(filePath)) {
           const file = new InputFile(filePath, `tdata_${account.phone ?? account.id}.zip`);
           await ctx.replyWithDocument(file, {
-            caption: `tdata -- аккаунт ${account.phone ?? "#" + account.id}`,
+            caption: `tdata — аккаунт ${account.phone ?? "#" + account.id}`,
           });
         }
         return;
@@ -530,7 +521,7 @@ async function deliverAccount(ctx: any, account: any, orderId: number) {
       { parse_mode: "Markdown", reply_markup: keyboard }
     );
     await ctx.replyWithDocument(file, {
-      caption: `tdata -- аккаунт ${account.phone ?? "#" + account.id}`,
+      caption: `tdata — аккаунт ${account.phone ?? "#" + account.id}`,
     });
     return;
   }
