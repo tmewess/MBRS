@@ -9,3 +9,4 @@ export * from "./users";
 export * from "./proxies";
 export * from "./other_products";
 export * from "./promo_codes";
+export * from "./faq_items";

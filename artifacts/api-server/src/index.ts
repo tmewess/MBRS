@@ -158,6 +158,15 @@ async function runMigrations() {
         "is_active" boolean NOT NULL DEFAULT true,
         "created_at" timestamptz NOT NULL DEFAULT now()
       );
+      CREATE TABLE IF NOT EXISTS "faq_items" (
+        "id" serial PRIMARY KEY,
+        "question" text NOT NULL,
+        "answer" text NOT NULL,
+        "sort_order" integer NOT NULL DEFAULT 0,
+        "is_active" boolean NOT NULL DEFAULT true,
+        "created_at" timestamptz NOT NULL DEFAULT now()
+      );
+      ALTER TABLE "accounts" ADD COLUMN IF NOT EXISTS "status" text NOT NULL DEFAULT 'available';
       ALTER TABLE "bot_settings" ADD COLUMN IF NOT EXISTS "require_subscription" boolean NOT NULL DEFAULT false;
       ALTER TABLE "bot_settings" ADD COLUMN IF NOT EXISTS "subscription_channel" text;
       ALTER TABLE "bot_settings" ADD COLUMN IF NOT EXISTS "maintenance_mode" boolean NOT NULL DEFAULT false;

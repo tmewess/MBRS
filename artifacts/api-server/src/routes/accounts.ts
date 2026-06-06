@@ -216,4 +216,19 @@ router.delete("/accounts/:id", async (req, res): Promise<void> => {
   res.json({ success: true });
 });
 
+// Called when validation fails during purchase — marks account as unavailable
+router.post("/accounts/:id/remove", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    await db.update(accountsTable)
+      .set({ status: "unavailable" })
+      .where(eq(accountsTable.id, id));
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, "Failed to remove invalid account");
+    res.status(500).json({ error: "DB error" });
+  }
+});
+
 export default router;

@@ -140,6 +140,8 @@ export default function AccountDetail() {
     toast({ title: "Скопировано", description: "Все данные аккаунта" });
   };
 
+  const [buyStage, setBuyStage] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
+
   const handleBuy = async () => {
     if (!user) {
       toast({ title: "Ошибка", description: "Откройте в Telegram", variant: "destructive" });
@@ -156,6 +158,36 @@ export default function AccountDetail() {
       return;
     }
 
+    // Step 1: validation animation
+    if (account.sessionId) {
+      setBuyStage("checking");
+      try {
+        const checkRes = await fetch(`/api/sessions/${account.sessionId}/check`, { method: "POST" });
+        const checkData = await checkRes.json();
+        const spam = checkData.spamBlock ?? "";
+        const isValid = checkData.success && (spam === "" || spam === "0" || spam === "none" || spam === "Отсутствует");
+
+        if (!isValid) {
+          setBuyStage("invalid");
+          // Auto-remove from catalog
+          await fetch(`/api/accounts/${account.id}/remove`, { method: "POST" }).catch(() => {});
+          await new Promise(r => setTimeout(r, 1800));
+          setBuyStage("idle");
+          setIsBuying(false);
+          toast({ title: "Аккаунт недоступен", description: "Аккаунт не прошёл проверку и был удалён из каталога.", variant: "destructive" });
+          return;
+        }
+
+        setBuyStage("valid");
+        await new Promise(r => setTimeout(r, 900));
+      } catch {
+        // If check fails, allow purchase anyway
+        setBuyStage("valid");
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+
+    // Step 2: purchase
     const res = await fetch("/api/balance/purchase", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -175,6 +207,7 @@ export default function AccountDetail() {
     } else {
       toast({ title: "Ошибка", description: data.error ?? "Не удалось купить", variant: "destructive" });
     }
+    setBuyStage("idle");
     setIsBuying(false);
   };
 
@@ -287,10 +320,18 @@ export default function AccountDetail() {
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Пароль 2FA:</label>
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-muted/60 rounded-lg px-3 py-2.5 text-sm font-mono">{acc.password}</div>
+                  <div className="flex-1 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2.5 text-sm font-mono text-amber-400">{acc.password}</div>
                   <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0 active:scale-90 transition-transform duration-100" onClick={() => handleCopy(acc.password!, "Пароль")}>
                     <Copy className="w-4 h-4" />
                   </Button>
+                </div>
+              </div>
+            )}
+            {acc.hasPassword && !acc.password && (
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Пароль 2FA:</label>
+                <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2.5">
+                  <span className="text-xs text-amber-400">⚠️ На аккаунте установлен пароль 2FA, но он не был сохранён при заливе. Обратитесь в поддержку.</span>
                 </div>
               </div>
             )}
@@ -490,17 +531,40 @@ export default function AccountDetail() {
 
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur border-t border-border/50 z-10">
         <Button
-          className="w-full h-12 text-base font-semibold active:scale-95 transition-transform duration-100"
+          className={`w-full h-12 text-base font-semibold active:scale-95 transition-all duration-200 ${
+            buyStage === "valid" ? "bg-green-600 hover:bg-green-600" :
+            buyStage === "invalid" ? "bg-red-600 hover:bg-red-600" : ""
+          }`}
           onClick={handleBuy}
           disabled={isBuying || account.status !== "available"}
         >
-          {isBuying
-            ? "Обработка..."
-            : account.isFree === "true" || account.price === 0
-              ? "Получить бесплатно"
-              : account.status === "available"
-                ? "Купить за Stars"
-                : "Недоступен"}
+          {buyStage === "checking" && (
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Проверка аккаунта...
+            </span>
+          )}
+          {buyStage === "valid" && (
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" />
+              Аккаунт валидный, покупаем...
+            </span>
+          )}
+          {buyStage === "invalid" && (
+            <span className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              Аккаунт невалидный, удаляем...
+            </span>
+          )}
+          {buyStage === "idle" && (
+            isBuying
+              ? "Обработка..."
+              : account.isFree === "true" || account.price === 0
+                ? "Получить бесплатно"
+                : account.status === "available"
+                  ? "Купить за Stars"
+                  : "Недоступен"
+          )}
         </Button>
       </div>
     </div>

@@ -1,34 +1,16 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
-import { sql } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
+import { db, faqItemsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 
 const router = Router();
 
-// Ensure faq_items table exists
-async function ensureFaqTable() {
-  try {
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS "faq_items" (
-        "id" serial PRIMARY KEY,
-        "question" text NOT NULL,
-        "answer" text NOT NULL,
-        "sort_order" integer NOT NULL DEFAULT 0,
-        "is_active" boolean NOT NULL DEFAULT true,
-        "created_at" timestamptz NOT NULL DEFAULT now()
-      )
-    `);
-  } catch (err) {
-    logger.error({ err }, "Failed to create faq_items table");
-  }
-}
-
-ensureFaqTable();
-
 router.get("/faq", async (_req, res): Promise<void> => {
   try {
-    const rows = await db.execute(sql`SELECT * FROM faq_items WHERE is_active = true ORDER BY sort_order ASC, created_at ASC`);
-    res.json(rows.rows);
+    const rows = await db.select().from(faqItemsTable)
+      .where(eq(faqItemsTable.isActive, true))
+      .orderBy(asc(faqItemsTable.sortOrder), asc(faqItemsTable.createdAt));
+    res.json(rows);
   } catch (err) {
     logger.error({ err }, "Failed to list FAQ items");
     res.status(500).json({ error: "DB error" });
@@ -37,8 +19,9 @@ router.get("/faq", async (_req, res): Promise<void> => {
 
 router.get("/faq/all", async (_req, res): Promise<void> => {
   try {
-    const rows = await db.execute(sql`SELECT * FROM faq_items ORDER BY sort_order ASC, created_at ASC`);
-    res.json(rows.rows);
+    const rows = await db.select().from(faqItemsTable)
+      .orderBy(asc(faqItemsTable.sortOrder), asc(faqItemsTable.createdAt));
+    res.json(rows);
   } catch (err) {
     logger.error({ err }, "Failed to list all FAQ items");
     res.status(500).json({ error: "DB error" });
@@ -52,10 +35,12 @@ router.post("/faq", async (req, res): Promise<void> => {
     return;
   }
   try {
-    const rows = await db.execute(sql`
-      INSERT INTO faq_items (question, answer, sort_order) VALUES (${question}, ${answer}, ${sortOrder ?? 0}) RETURNING *
-    `);
-    res.json({ success: true, item: rows.rows[0] });
+    const [item] = await db.insert(faqItemsTable).values({
+      question: question.trim(),
+      answer: answer.trim(),
+      sortOrder: sortOrder ?? 0,
+    }).returning();
+    res.json({ success: true, item });
   } catch (err) {
     logger.error({ err }, "Failed to create FAQ item");
     res.status(500).json({ error: "DB error" });
@@ -65,18 +50,19 @@ router.post("/faq", async (req, res): Promise<void> => {
 router.patch("/faq/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const { question, answer, sortOrder, isActive } = req.body as { question?: string; answer?: string; sortOrder?: number; isActive?: boolean };
+  const { question, answer, sortOrder, isActive } = req.body as {
+    question?: string; answer?: string; sortOrder?: number; isActive?: boolean;
+  };
   try {
-    const rows = await db.execute(sql`
-      UPDATE faq_items SET
-        question = COALESCE(${question ?? null}, question),
-        answer = COALESCE(${answer ?? null}, answer),
-        sort_order = COALESCE(${sortOrder ?? null}, sort_order),
-        is_active = COALESCE(${isActive ?? null}, is_active)
-      WHERE id = ${id} RETURNING *
-    `);
-    if (!rows.rows.length) { res.status(404).json({ error: "Not found" }); return; }
-    res.json({ success: true, item: rows.rows[0] });
+    const updates: Partial<typeof faqItemsTable.$inferInsert> = {};
+    if (question !== undefined) updates.question = question.trim();
+    if (answer !== undefined) updates.answer = answer.trim();
+    if (sortOrder !== undefined) updates.sortOrder = sortOrder;
+    if (isActive !== undefined) updates.isActive = isActive;
+
+    const [item] = await db.update(faqItemsTable).set(updates).where(eq(faqItemsTable.id, id)).returning();
+    if (!item) { res.status(404).json({ error: "Not found" }); return; }
+    res.json({ success: true, item });
   } catch (err) {
     logger.error({ err }, "Failed to update FAQ item");
     res.status(500).json({ error: "DB error" });
@@ -87,7 +73,7 @@ router.delete("/faq/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   try {
-    await db.execute(sql`DELETE FROM faq_items WHERE id = ${id}`);
+    await db.delete(faqItemsTable).where(eq(faqItemsTable.id, id));
     res.json({ success: true });
   } catch (err) {
     logger.error({ err }, "Failed to delete FAQ item");
