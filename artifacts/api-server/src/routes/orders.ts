@@ -32,6 +32,12 @@ router.get("/orders", async (_req, res): Promise<void> => {
       accountHasPassword: accountsTable.hasPassword,
       otherProductSocialNetwork: otherProductsTable.socialNetwork,
       otherProductDescription: otherProductsTable.description,
+      otherProductContent: otherProductsTable.deliveryDescription,
+      otherProductPrice: otherProductsTable.price,
+      otherProductLogin: otherProductsTable.login,
+      otherProductPassword: otherProductsTable.password,
+      otherProductEmail: otherProductsTable.email,
+      otherProductEmailPassword: otherProductsTable.emailPassword,
     })
     .from(ordersTable)
     .leftJoin(accountsTable, eq(ordersTable.accountId, accountsTable.id))

@@ -34,6 +34,12 @@ interface OrderWithAccount {
   accountHasPassword: boolean | null;
   otherProductSocialNetwork: string | null;
   otherProductDescription: string | null;
+  otherProductContent: string | null;
+  otherProductPrice: number | null;
+  otherProductLogin: string | null;
+  otherProductPassword: string | null;
+  otherProductEmail: string | null;
+  otherProductEmailPassword: string | null;
 }
 
 const COUNTRY_FLAGS: Record<string, string> = {
@@ -249,6 +255,56 @@ export default function Orders() {
                 </div>
               </div>
             </div>
+
+            {/* Content for Other product orders */}
+            {isOther && (order.otherProductLogin || order.otherProductPassword || order.otherProductEmail || order.otherProductContent) ? (
+              <div
+                className="p-4 rounded-2xl space-y-3"
+                style={{ background: "rgba(168,85,247,0.05)", border: "1px solid rgba(168,85,247,0.12)" }}
+              >
+                <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                  Данные товара
+                </div>
+                {order.otherProductLogin && (
+                  <DataRow label="Логин" value={order.otherProductLogin} onCopy={() => handleCopy(order.otherProductLogin, "Логин")} />
+                )}
+                {order.otherProductPassword && (
+                  <DataRow label="Пароль" value={order.otherProductPassword} onCopy={() => handleCopy(order.otherProductPassword, "Пароль")} />
+                )}
+                {order.otherProductEmail && (
+                  <DataRow label="Email" value={order.otherProductEmail} onCopy={() => handleCopy(order.otherProductEmail, "Email")} />
+                )}
+                {order.otherProductEmailPassword && (
+                  <DataRow label="Пароль от Email" value={order.otherProductEmailPassword} onCopy={() => handleCopy(order.otherProductEmailPassword, "Пароль от Email")} />
+                )}
+                {order.otherProductContent && (
+                  <DataRow label="Инструкция" value={order.otherProductContent} onCopy={() => handleCopy(order.otherProductContent, "Инструкция")} />
+                )}
+                <button
+                  onClick={() => {
+                    const parts: string[] = [];
+                    if (order.otherProductLogin) parts.push(`Логин: ${order.otherProductLogin}`);
+                    if (order.otherProductPassword) parts.push(`Пароль: ${order.otherProductPassword}`);
+                    if (order.otherProductEmail) parts.push(`Email: ${order.otherProductEmail}`);
+                    if (order.otherProductEmailPassword) parts.push(`Пароль Email: ${order.otherProductEmailPassword}`);
+                    navigator.clipboard.writeText(parts.join("\n"));
+                    toast({ title: "Скопировано", description: "Все данные скопированы" });
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95"
+                  style={{ background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.2)", color: "hsl(262 83% 68%)" }}
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  Скопировать все данные
+                </button>
+              </div>
+            ) : isOther ? (
+              <div
+                className="p-4 rounded-2xl text-center"
+                style={{ background: "rgba(168,85,247,0.05)", border: "1px solid rgba(168,85,247,0.12)" }}
+              >
+                <p className="text-sm text-muted-foreground">Данные будут доступны после обработки заказа</p>
+              </div>
+            ) : null}
 
             {/* Account data for Telegram accounts */}
             {!isOther && (
