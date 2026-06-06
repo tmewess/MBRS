@@ -349,16 +349,16 @@ export default function Accounts() {
             <Trash2 className="mr-1 h-4 w-4" /> Очистить все
           </Button>
 
-          {/* LolzTeam Import */}
+          {/* Lolz Import */}
           <Dialog open={isLolzOpen} onOpenChange={setIsLolzOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
-                <Download className="mr-2 h-4 w-4" /> Импорт LolzTeam
+                <Download className="mr-2 h-4 w-4" /> Импорт с Маркета
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Импорт аккаунтов с LolzTeam Market</DialogTitle>
+                <DialogTitle>Импорт аккаунтов с Маркета</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
@@ -528,7 +528,7 @@ export default function Accounts() {
           <DialogHeader>
             <DialogTitle>
               {pendingLolz
-                ? `Карточка товара — LolzTeam #${pendingLolz.itemId}`
+                ? `Карточка товара #${pendingLolz.itemId}`
                 : "Карточка товара — новый аккаунт"}
             </DialogTitle>
           </DialogHeader>
@@ -657,7 +657,7 @@ export default function Accounts() {
             {isSaving
               ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Сохранение...</>
               : pendingLolz
-                ? "Купить на LolzTeam и сохранить"
+                ? "Купить и сохранить"
                 : "Сохранить аккаунт"}
           </Button>
         </DialogContent>

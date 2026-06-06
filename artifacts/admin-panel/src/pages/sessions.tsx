@@ -160,7 +160,7 @@ export default function Sessions() {
   const [sellCountry, setSellCountry] = useState("");
   const [sellIsFree, setSellIsFree] = useState(false);
 
-  // LolzTeam states
+  // Lolz states
   const [isLolzOpen, setIsLolzOpen] = useState(false);
   const [lolzAccounts, setLolzAccounts] = useState<LolzAccount[]>([]);
   const [lolzLoading, setLolzLoading] = useState(false);
@@ -691,13 +691,13 @@ export default function Sessions() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <Download className="w-4 h-4" />
-              Импорт LolzTeam
+              Импорт с Маркета
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="p-4 space-y-4">
               <p className="text-sm text-muted-foreground">
-                Поиск и импорт Telegram аккаунтов с LolzTeam Market. API ключ задаётся в <a href="/settings" className="text-primary underline">Настройках</a>.
+                Поиск и импорт Telegram аккаунтов с Маркета. API ключ задаётся в <a href="/settings" className="text-primary underline">Настройках</a>.
               </p>
 
               <div className="grid grid-cols-3 gap-3">

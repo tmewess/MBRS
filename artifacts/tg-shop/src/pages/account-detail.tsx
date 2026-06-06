@@ -140,75 +140,88 @@ export default function AccountDetail() {
     toast({ title: "Скопировано", description: "Все данные аккаунта" });
   };
 
-  const [buyStage, setBuyStage] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
+  const [showBuyModal, setShowBuyModal] = useState(false);
+  const [modalStage, setModalStage] = useState<"checking" | "valid" | "invalid" | "buying">("checking");
+  const [checkInfo, setCheckInfo] = useState<{ spamBlock: string; hasPremium: boolean } | null>(null);
 
-  const handleBuy = async () => {
+  const handleBuyClick = () => {
     if (!user) {
       toast({ title: "Ошибка", description: "Откройте в Telegram", variant: "destructive" });
       return;
     }
     if (!account) return;
-
-    setIsBuying(true);
     const isFree = account.isFree === "true" || account.price === 0;
-
     if (!isFree && balance < account.price) {
       toast({ title: "Недостаточно Stars", description: `Нужно: ${account.price}, у вас: ${balance}. Пополните баланс.`, variant: "destructive" });
-      setIsBuying(false);
       return;
     }
+    // Open modal and start checking
+    setModalStage("checking");
+    setCheckInfo(null);
+    setShowBuyModal(true);
+    runValidation();
+  };
 
-    // Step 1: validation animation
-    if (account.sessionId) {
-      setBuyStage("checking");
-      try {
-        const checkRes = await fetch(`/api/sessions/${account.sessionId}/check`, { method: "POST" });
-        const checkData = await checkRes.json();
-        const spam = checkData.spamBlock ?? "";
-        const isValid = checkData.success && (spam === "" || spam === "0" || spam === "none" || spam === "Отсутствует");
-
-        if (!isValid) {
-          setBuyStage("invalid");
-          // Auto-remove from catalog
-          await fetch(`/api/accounts/${account.id}/remove`, { method: "POST" }).catch(() => {});
-          await new Promise(r => setTimeout(r, 1800));
-          setBuyStage("idle");
-          setIsBuying(false);
-          toast({ title: "Аккаунт недоступен", description: "Аккаунт не прошёл проверку и был удалён из каталога.", variant: "destructive" });
-          return;
-        }
-
-        setBuyStage("valid");
-        await new Promise(r => setTimeout(r, 900));
-      } catch {
-        // If check fails, allow purchase anyway
-        setBuyStage("valid");
-        await new Promise(r => setTimeout(r, 500));
+  const runValidation = async () => {
+    if (!account) return;
+    if (!account.sessionId) {
+      // No session — skip validation, go straight to valid
+      setModalStage("valid");
+      setCheckInfo({ spamBlock: "Не проверялся", hasPremium: account.hasPremium });
+      return;
+    }
+    try {
+      const checkRes = await fetch(`/api/sessions/${account.sessionId}/check`, { method: "POST" });
+      const checkData = await checkRes.json();
+      const spam = checkData.spamBlock ?? "";
+      const isValid = checkData.success && (spam === "" || spam === "0" || spam === "none" || spam === "Отсутствует");
+      setCheckInfo({
+        spamBlock: isValid ? "Отсутствует" : (spam || "Обнаружен"),
+        hasPremium: checkData.hasPremium ?? account.hasPremium,
+      });
+      if (!isValid) {
+        setModalStage("invalid");
+        await fetch(`/api/accounts/${account.id}/remove`, { method: "POST" }).catch(() => {});
+      } else {
+        setModalStage("valid");
       }
+    } catch {
+      // Check failed — allow purchase
+      setModalStage("valid");
+      setCheckInfo({ spamBlock: "Не удалось проверить", hasPremium: account.hasPremium });
     }
+  };
 
-    // Step 2: purchase
-    const res = await fetch("/api/balance/purchase", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        telegramUserId: String(user.id),
-        telegramUsername: user.username,
-        accountId: account.id,
-      }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      if (!isFree) setBalance((b) => b - account.price);
-      setOrder({ id: data.orderId, account: data.account });
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 3000);
-      toast({ title: "Успех!", description: isFree ? "Аккаунт получен!" : "Аккаунт куплен!" });
-    } else {
-      toast({ title: "Ошибка", description: data.error ?? "Не удалось купить", variant: "destructive" });
+  const handleConfirmPurchase = async () => {
+    if (!user || !account) return;
+    setModalStage("buying");
+    const isFree = account.isFree === "true" || account.price === 0;
+    try {
+      const res = await fetch("/api/balance/purchase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          telegramUserId: String(user.id),
+          telegramUsername: user.username,
+          accountId: account.id,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowBuyModal(false);
+        if (!isFree) setBalance((b) => b - account.price);
+        setOrder({ id: data.orderId, account: data.account });
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
+        toast({ title: "Успех!", description: isFree ? "Аккаунт получен!" : "Аккаунт куплен!" });
+      } else {
+        setShowBuyModal(false);
+        toast({ title: "Ошибка", description: data.error ?? "Не удалось купить", variant: "destructive" });
+      }
+    } catch {
+      setShowBuyModal(false);
+      toast({ title: "Ошибка", description: "Нет подключения", variant: "destructive" });
     }
-    setBuyStage("idle");
-    setIsBuying(false);
   };
 
   const handleDownload = () => {
@@ -467,7 +480,14 @@ export default function AccountDetail() {
           </div>
         )}
 
-        {/* Info card without description and without lastActivity */}
+        {/* Description first, then info card */}
+        {account.description && (
+          <Card className="p-4 bg-card/80 border-border/40">
+            <h3 className="text-sm font-semibold mb-2">Описание</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">{account.description}</p>
+          </Card>
+        )}
+
         <Card className="p-4 bg-card/80 border-border/40">
           <h3 className="text-sm font-semibold mb-3">Достоверная информация</h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-3">
@@ -491,82 +511,154 @@ export default function AccountDetail() {
           </div>
         )}
 
-        {/* Validation check — only for accounts with a session */}
-        {account.sessionId && (
-          <Card className="p-4 bg-card/80 border-border/40 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Проверка аккаунта</div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs active:scale-95 transition-transform duration-100"
-                onClick={handleValidate}
-                disabled={validating}
-              >
-                {validating ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Проверяю...</> : "Проверить"}
-              </Button>
-            </div>
-            {validResult && (
-              <div className={`flex items-start gap-2.5 rounded-lg p-3 text-sm ${validResult.valid ? "bg-green-500/10 border border-green-500/20" : "bg-red-500/10 border border-red-500/20"}`}>
-                {validResult.valid
-                  ? <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
-                  : <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                }
-                <div className="space-y-1">
-                  <div className={`font-semibold ${validResult.valid ? "text-green-400" : "text-red-400"}`}>
-                    {validResult.valid ? "Аккаунт валидный" : "Есть ограничения"}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Спамблок: {validResult.spamBlock} · Premium: {validResult.hasPremium ? "Да" : "Нет"}
-                  </div>
-                </div>
-              </div>
-            )}
-            {!validResult && !validating && (
-              <p className="text-xs text-muted-foreground">Нажмите «Проверить» чтобы узнать статус аккаунта перед покупкой (как на LolzTeam).</p>
-            )}
-          </Card>
-        )}
+        {/* Validation happens automatically in the modal when Buy is clicked */}
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur border-t border-border/50 z-10">
         <Button
-          className={`w-full h-12 text-base font-semibold active:scale-95 transition-all duration-200 ${
-            buyStage === "valid" ? "bg-green-600 hover:bg-green-600" :
-            buyStage === "invalid" ? "bg-red-600 hover:bg-red-600" : ""
-          }`}
-          onClick={handleBuy}
+          className="w-full h-12 text-base font-semibold active:scale-95 transition-transform duration-100"
+          onClick={handleBuyClick}
           disabled={isBuying || account.status !== "available"}
         >
-          {buyStage === "checking" && (
-            <span className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Проверка аккаунта...
-            </span>
-          )}
-          {buyStage === "valid" && (
-            <span className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4" />
-              Аккаунт валидный, покупаем...
-            </span>
-          )}
-          {buyStage === "invalid" && (
-            <span className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4" />
-              Аккаунт невалидный, удаляем...
-            </span>
-          )}
-          {buyStage === "idle" && (
-            isBuying
-              ? "Обработка..."
-              : account.isFree === "true" || account.price === 0
-                ? "Получить бесплатно"
-                : account.status === "available"
-                  ? "Купить за Stars"
-                  : "Недоступен"
-          )}
+          {account.isFree === "true" || account.price === 0
+            ? "Получить бесплатно"
+            : account.status === "available"
+              ? "Купить за Stars"
+              : "Недоступен"}
         </Button>
       </div>
+
+      {/* Validation + Purchase Modal */}
+      {showBuyModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => { if (modalStage !== "buying") setShowBuyModal(false); }}
+          />
+          {/* Sheet */}
+          <div className="relative w-full max-w-lg rounded-t-2xl bg-background border-t border-border overflow-hidden animate-in slide-in-from-bottom duration-300">
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+            </div>
+
+            <div className="px-6 pb-8 pt-2 space-y-5">
+              {/* CHECKING stage */}
+              {modalStage === "checking" && (
+                <div className="flex flex-col items-center py-6 gap-4">
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Shield className="w-6 h-6 text-primary" />
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-lg">Проверка аккаунта</div>
+                    <div className="text-sm text-muted-foreground mt-1">Проверяем валидность, спамблок и Premium...</div>
+                  </div>
+                  <div className="w-full space-y-2">
+                    {["Авторизация сессии", "Проверка спамблока", "Проверка Premium"].map((step, i) => (
+                      <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/40">
+                        <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
+                        <span className="text-sm">{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* VALID stage */}
+              {modalStage === "valid" && (
+                <>
+                  <div className="flex flex-col items-center py-4 gap-3">
+                    <div className="w-16 h-16 rounded-full bg-green-500/15 flex items-center justify-center">
+                      <CheckCircle2 className="w-8 h-8 text-green-400" />
+                    </div>
+                    <div className="text-center">
+                      <div className="font-semibold text-lg text-green-400">Аккаунт валидный</div>
+                      <div className="text-sm text-muted-foreground mt-0.5">Проверка пройдена успешно</div>
+                    </div>
+                  </div>
+
+                  {checkInfo && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-xl bg-muted/40 p-3 space-y-1">
+                        <div className="text-xs text-muted-foreground">Спамблок</div>
+                        <div className="font-semibold text-sm text-green-400">{checkInfo.spamBlock}</div>
+                      </div>
+                      <div className="rounded-xl bg-muted/40 p-3 space-y-1">
+                        <div className="text-xs text-muted-foreground">Premium</div>
+                        <div className={`font-semibold text-sm ${checkInfo.hasPremium ? "text-yellow-400" : "text-muted-foreground"}`}>
+                          {checkInfo.hasPremium ? "⭐ Есть" : "Нет"}
+                        </div>
+                      </div>
+                      <div className="rounded-xl bg-muted/40 p-3 space-y-1 col-span-2">
+                        <div className="text-xs text-muted-foreground">Стоимость</div>
+                        <div className="font-semibold text-sm">
+                          {account.isFree === "true" || account.price === 0
+                            ? <span className="text-green-400">Бесплатно</span>
+                            : <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" /> {account.price} Stars</span>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      className="flex-1 h-12"
+                      onClick={() => setShowBuyModal(false)}
+                    >
+                      Отмена
+                    </Button>
+                    <Button
+                      className="flex-1 h-12 font-semibold bg-green-600 hover:bg-green-700 text-white"
+                      onClick={handleConfirmPurchase}
+                    >
+                      Подтвердить покупку
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {/* INVALID stage */}
+              {modalStage === "invalid" && (
+                <>
+                  <div className="flex flex-col items-center py-6 gap-3">
+                    <div className="w-16 h-16 rounded-full bg-red-500/15 flex items-center justify-center">
+                      <AlertCircle className="w-8 h-8 text-red-400" />
+                    </div>
+                    <div className="text-center">
+                      <div className="font-semibold text-lg text-red-400">Аккаунт невалидный</div>
+                      <div className="text-sm text-muted-foreground mt-1">Аккаунт удалён из каталога</div>
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full h-12"
+                    variant="outline"
+                    onClick={() => setShowBuyModal(false)}
+                  >
+                    Закрыть
+                  </Button>
+                </>
+              )}
+
+              {/* BUYING stage */}
+              {modalStage === "buying" && (
+                <div className="flex flex-col items-center py-8 gap-4">
+                  <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                  <div className="text-center">
+                    <div className="font-semibold text-lg">Оформляем покупку...</div>
+                    <div className="text-sm text-muted-foreground mt-1">Подождите несколько секунд</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -490,7 +490,7 @@ async function deliverAccount(ctx: any, account: any, orderId: number) {
         }
         return;
       } catch (err) {
-        logger.warn({ err }, "LolzTeam auto-delivery failed, falling back to manual data");
+        logger.warn({ err }, "Auto-delivery failed, falling back to manual data");
       }
     }
   }
