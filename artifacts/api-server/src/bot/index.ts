@@ -122,6 +122,18 @@ async function buildMainKeyboard(settings: Awaited<ReturnType<typeof getBotSetti
     keyboard.webApp("Админ панель", adminUrl).row();
   }
 
+  // Notifications toggle button
+  if (userId) {
+    try {
+      const [user] = await db.select().from(usersTable).where(eq(usersTable.telegramUserId, String(userId)));
+      const enabled = user?.notificationsEnabled ?? false;
+      keyboard.callbackData(
+        enabled ? "✅ Уведомления включены" : "❌ Уведомления выключены",
+        `toggle_notifications_${userId}`
+      ).row();
+    } catch {}
+  }
+
   if (settings.supportUsername) {
     keyboard.url("Поддержка", `https://t.me/${settings.supportUsername}`).row();
   }
@@ -354,6 +366,37 @@ export async function startBot() {
 
   bot.on("callback_query:data", async (ctx) => {
     const data = ctx.callbackQuery.data;
+
+    if (data.startsWith("toggle_notifications_")) {
+      const userId = ctx.from.id;
+      try {
+        const [user] = await db.select().from(usersTable).where(eq(usersTable.telegramUserId, String(userId)));
+        if (!user) {
+          await ctx.answerCallbackQuery({ text: "Пользователь не найден", show_alert: true });
+          return;
+        }
+        const newValue = !user.notificationsEnabled;
+        await db.update(usersTable)
+          .set({ notificationsEnabled: newValue })
+          .where(eq(usersTable.telegramUserId, String(userId)));
+
+        await ctx.answerCallbackQuery({
+          text: newValue ? "✅ Уведомления включены!" : "❌ Уведомления выключены",
+          show_alert: false,
+        });
+
+        // Refresh keyboard to update button state
+        const settings = await getBotSettings();
+        const keyboard = await buildMainKeyboard(settings, userId);
+        try {
+          await ctx.editMessageReplyMarkup({ reply_markup: keyboard });
+        } catch {}
+      } catch (err) {
+        logger.error({ err }, "toggle_notifications failed");
+        await ctx.answerCallbackQuery({ text: "Ошибка", show_alert: true });
+      }
+      return;
+    }
 
     if (data.startsWith("getcode_")) {
       const parts = data.split("_");

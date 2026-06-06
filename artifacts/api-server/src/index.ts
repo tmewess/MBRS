@@ -171,6 +171,7 @@ async function runMigrations() {
       ALTER TABLE "bot_settings" ADD COLUMN IF NOT EXISTS "subscription_channel" text;
       ALTER TABLE "bot_settings" ADD COLUMN IF NOT EXISTS "maintenance_mode" boolean NOT NULL DEFAULT false;
       ALTER TABLE "bot_settings" ADD COLUMN IF NOT EXISTS "maintenance_message" text NOT NULL DEFAULT '🔧 Технические работы. Скоро вернёмся!';
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "notifications_enabled" boolean NOT NULL DEFAULT false;
       ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "other_product_id" integer;
     `);
     logger.info("Database migrations completed.");

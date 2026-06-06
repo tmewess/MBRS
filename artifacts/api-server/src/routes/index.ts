@@ -14,6 +14,7 @@ import proxiesRouter from "./proxies";
 import otherProductsRouter from "./other-products";
 import promoRouter from "./promo";
 import faqRouter from "./faq";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(proxiesRouter);
 router.use(otherProductsRouter);
 router.use(promoRouter);
 router.use(faqRouter);
+router.use(notificationsRouter);
 
 export default router;

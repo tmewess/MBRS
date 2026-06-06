@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Plus, Trash2, Smartphone, CheckCircle2, AlertCircle, RefreshCw,
   Upload, Store, Package, CheckCircle, Globe, Star, ShieldAlert, Crown,
-  Key, Wifi, Download, Search, ShoppingBag,
+  Key, Wifi, Download, Search, ShoppingBag, Bell,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
@@ -129,6 +129,51 @@ const LOLZ_ORIGINS: { value: string; label: string }[] = [
 export default function Sessions() {
   const { toast } = useToast();
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
+
+  // Notifications state
+  const [showNotifDialog, setShowNotifDialog] = useState(false);
+  const [notifText, setNotifText] = useState("");
+  const [sendingNotif, setSendingNotif] = useState(false);
+  const [subscribers, setSubscribers] = useState<{ telegramUserId: string; username: string | null; firstName: string | null }[]>([]);
+  const [loadingSubscribers, setLoadingSubscribers] = useState(false);
+
+  const fetchSubscribers = async () => {
+    setLoadingSubscribers(true);
+    try {
+      const res = await fetch("/api/notifications/subscribers");
+      const data = await res.json();
+      setSubscribers(Array.isArray(data) ? data : []);
+    } catch {
+      setSubscribers([]);
+    }
+    setLoadingSubscribers(false);
+  };
+
+  const handleSendNotification = async () => {
+    if (!notifText.trim()) {
+      toast({ title: "Ошибка", description: "Введите текст уведомления", variant: "destructive" });
+      return;
+    }
+    setSendingNotif(true);
+    try {
+      const res = await fetch("/api/notifications/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: notifText }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Отправлено!", description: `Успешно: ${data.sent}, ошибок: ${data.failed}` });
+        setShowNotifDialog(false);
+        setNotifText("");
+      } else {
+        throw new Error(data.error ?? "Ошибка");
+      }
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    }
+    setSendingNotif(false);
+  };
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isTdataDialogOpen, setIsTdataDialogOpen] = useState(false);
@@ -585,6 +630,14 @@ export default function Sessions() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { setShowNotifDialog(true); fetchSubscribers(); }}
+          >
+            <Bell className="w-4 h-4 mr-1" />
+            Уведомления
+          </Button>
           <Button variant="outline" size="sm" onClick={loadSessions} disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-1 ${loading ? "animate-spin" : ""}`} />
             Обновить
@@ -1266,6 +1319,90 @@ export default function Sessions() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Notifications Dialog */}
+      <Dialog open={showNotifDialog} onOpenChange={setShowNotifDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bell className="w-4 h-4" />
+              Отправить уведомление
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Текст уведомления</Label>
+              <textarea
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring min-h-[120px] resize-none"
+                placeholder="🔥 Новые аккаунты уже в каталоге! Успей купить по лучшей цене."
+                value={notifText}
+                onChange={e => setNotifText(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Поддерживается HTML: &lt;b&gt;жирный&lt;/b&gt;, &lt;i&gt;курсив&lt;/i&gt;</p>
+            </div>
+
+            {/* Subscribers list */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Подписчики уведомлений</Label>
+                <Button size="sm" variant="ghost" onClick={fetchSubscribers} disabled={loadingSubscribers}>
+                  <RefreshCw className={`w-3 h-3 mr-1 ${loadingSubscribers ? "animate-spin" : ""}`} />
+                  Обновить
+                </Button>
+              </div>
+              <div
+                className="rounded-lg border border-border overflow-hidden"
+                style={{ maxHeight: 180, overflowY: "auto" }}
+              >
+                {loadingSubscribers ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">Загрузка...</div>
+                ) : subscribers.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">Нет подписчиков</div>
+                ) : (
+                  subscribers.map(u => (
+                    <div key={u.telegramUserId} className="flex items-center gap-3 px-3 py-2 border-b border-border/50 last:border-0">
+                      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                        {(u.firstName?.[0] ?? u.username?.[0] ?? "?").toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">
+                          {u.firstName ?? u.username ?? "Пользователь"}
+                        </div>
+                        {u.username && (
+                          <div className="text-xs text-muted-foreground">@{u.username}</div>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground font-mono shrink-0">
+                        {u.telegramUserId}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Всего подписчиков: <strong>{subscribers.length}</strong>
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                className="flex-1"
+                onClick={handleSendNotification}
+                disabled={sendingNotif || subscribers.length === 0}
+              >
+                {sendingNotif ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Отправка...</>
+                ) : (
+                  <><Bell className="w-4 h-4 mr-2" />Отправить всем ({subscribers.length})</>
+                )}
+              </Button>
+              <Button variant="outline" onClick={() => setShowNotifDialog(false)}>
+                Отмена
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
