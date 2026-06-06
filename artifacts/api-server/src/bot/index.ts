@@ -440,3 +440,124 @@ export async function startBot() {
 
   bot.catch((err) => {
     logger.error({ err: err.error, update: err.ctx.update }, "Bot error");
+  });
+
+  try {
+    await bot.start({
+      onStart: (info) => {
+        logger.info({ username: info.username }, "Bot started");
+      },
+    });
+  } catch (err: any) {
+    if (err?.error_code === 401) {
+      logger.warn("Bot token is invalid (401 Unauthorized). The server will continue running without the bot.");
+    } else {
+      logger.error({ err }, "Bot startup failed");
+    }
+  }
+
+  logger.info("Telegram bot initialized");
+}
+
+async function deliverAccount(ctx: any, account: any, orderId: number) {
+  const settings = await getBotSettings();
+
+  if (account.lolzItemId) {
+    const apiKey = settings.lolzApiKey;
+    if (apiKey) {
+      try {
+        const lolzId = Number(account.lolzItemId);
+        const codeRes = await fetchLolzConfirmCode(lolzId, apiKey);
+        const resetRes = await resetLolzSessions(lolzId, apiKey);
+        const filePath = await downloadLolzFile(account.lolzItemId, apiKey);
+
+        let text = `Готово! *Заказ #${orderId} выполнен!*\n\n`;
+        text += `*Данные аккаунта Telegram:*\n\n`;
+        if (account.phone) text += `Номер: \`${account.phone}\`\n`;
+        if (account.dcId) text += `DC ID: \`${account.dcId}\`\n`;
+        if (account.userId) text += `User ID: \`${account.userId}\`\n`;
+        if (account.authKey) text += `Auth Key: \`${account.authKey.slice(0, 16)}...\`\n`;
+        if (account.country) text += `Страна: ${account.country}\n`;
+        if (account.hasPassword && account.password) text += `Пароль 2FA: \`${account.password}\`\n`;
+
+        if (codeRes.success && codeRes.code) {
+          text += `\n*Код подтверждения:* \`${codeRes.code}\`\n`;
+        }
+        if (resetRes.success) {
+          text += `Сессии сброшены.\n`;
+        }
+        text += `\n❓ Нужна помощь? /start`;
+
+        const keyboard = new InlineKeyboard();
+        if (account.sessionId) {
+          const buyerChatId = ctx.from?.id ?? ctx.chat?.id ?? 0;
+          keyboard.callbackData("🔑 Получить код", `getcode_${account.id}_${buyerChatId}`).row();
+        }
+        if (settings.supportUsername) {
+          keyboard.url("Помощь", `https://t.me/${settings.supportUsername}`).row();
+        }
+        await ctx.reply(text, { parse_mode: "Markdown", reply_markup: keyboard });
+
+        if (filePath && fs.existsSync(filePath)) {
+          const file = new InputFile(filePath, `tdata_${account.phone ?? account.id}.zip`);
+          await ctx.replyWithDocument(file, {
+            caption: `tdata -- аккаунт ${account.phone ?? "#" + account.id}`,
+          });
+        }
+        return;
+      } catch (err) {
+        logger.warn({ err }, "Auto-delivery failed, falling back to manual data");
+      }
+    }
+  }
+
+  if (account.filePath && fs.existsSync(account.filePath)) {
+    const buyerChatId = ctx.from?.id ?? ctx.chat?.id ?? 0;
+    const keyboard = new InlineKeyboard();
+    if (account.sessionId) {
+      keyboard.callbackData("🔑 Получить код", `getcode_${account.id}_${buyerChatId}`).row();
+    }
+    if (settings.supportUsername) {
+      keyboard.url("Помощь", `https://t.me/${settings.supportUsername}`).row();
+    }
+    const file = new InputFile(account.filePath, account.fileName ?? "tdata.zip");
+    await ctx.reply(
+      `Готово! *Заказ #${orderId} выполнен!*\n\n` +
+      `Аккаунт: \`${account.phone ?? "#" + account.id}\`\n` +
+      `Файл \`tdata.zip\` во вложении ниже.\n` +
+      `Распакуй и положи папку \`tdata\` в директорию Telegram Desktop.\n\n` +
+      `❓ Нужна помощь? /start`,
+      { parse_mode: "Markdown", reply_markup: keyboard }
+    );
+    await ctx.replyWithDocument(file, {
+      caption: `tdata -- аккаунт ${account.phone ?? "#" + account.id}`,
+    });
+    return;
+  }
+
+  let text = `Готово! *Заказ #${orderId} выполнен!*\n\n*Данные аккаунта Telegram:*\n\n`;
+
+  if (account.phone) text += `Номер: \`${account.phone}\`\n`;
+  if (account.dcId) text += `DC ID: \`${account.dcId}\`\n`;
+  if (account.userId) text += `User ID: \`${account.userId}\`\n`;
+  if (account.authKey) text += `Auth Key: \`${account.authKey.slice(0, 16)}...\`\n`;
+  if (account.country) text += `Страна: ${account.country}\n`;
+  if (account.hasPassword && account.password) text += `Пароль 2FA: \`${account.password}\`\n`;
+
+  text += `\n❓ Нужна помощь? /start`;
+
+  const buyerChatId = ctx.from?.id ?? ctx.chat?.id ?? 0;
+  const keyboard = new InlineKeyboard();
+  if (account.sessionId) {
+    keyboard.callbackData("🔑 Получить код", `getcode_${account.id}_${buyerChatId}`).row();
+  }
+  if (settings.supportUsername) {
+    keyboard.url("Помощь", `https://t.me/${settings.supportUsername}`).row();
+  }
+
+  await ctx.reply(text, { parse_mode: "Markdown", reply_markup: keyboard });
+}
+
+export function getBot() {
+  return bot;
+}
