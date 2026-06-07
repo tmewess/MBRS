@@ -171,9 +171,26 @@ async function runMigrations() {
       ALTER TABLE "bot_settings" ADD COLUMN IF NOT EXISTS "subscription_channel" text;
       ALTER TABLE "bot_settings" ADD COLUMN IF NOT EXISTS "maintenance_mode" boolean NOT NULL DEFAULT false;
       ALTER TABLE "bot_settings" ADD COLUMN IF NOT EXISTS "maintenance_message" text NOT NULL DEFAULT '🔧 Технические работы. Скоро вернёмся!';
-      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "notifications_enabled" boolean NOT NULL DEFAULT false;
-      ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "other_product_id" integer;
     `);
+
+    // Run ALTER TABLE migrations separately so each one is independent
+    const alterMigrations = [
+      `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "notifications_enabled" boolean NOT NULL DEFAULT false`,
+      `ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "other_product_id" integer`,
+      `ALTER TABLE "accounts" ADD COLUMN IF NOT EXISTS "session_id" integer`,
+      `ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "first_name" text`,
+      `ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "password" text`,
+      `ALTER TABLE "telegram_sessions" ADD COLUMN IF NOT EXISTS "file_path" text`,
+    ];
+
+    for (const sql of alterMigrations) {
+      try {
+        await client.query(sql);
+      } catch (err: any) {
+        // Log but continue — column may already exist or table may differ
+        logger.warn({ err: err?.message }, `Migration step skipped: ${sql.slice(0, 60)}`);
+      }
+    }
     logger.info("Database migrations completed.");
   } catch (err) {
     logger.error({ err }, "Migration failed");
