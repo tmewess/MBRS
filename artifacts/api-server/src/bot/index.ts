@@ -113,13 +113,15 @@ async function notifyAdmin(text: string) {
 
 async function buildMainKeyboard(settings: Awaited<ReturnType<typeof getBotSettings>>, userId?: number) {
   const shopUrl = getShopUrl();
-  const keyboard = new InlineKeyboard()
-    .webApp("Открыть магазин", shopUrl)
-    .row();
+  const keyboard = new InlineKeyboard();
+
+  keyboard.webApp("Открыть магазин", shopUrl);
+  keyboard.row();
 
   if (await isAdmin(userId)) {
     const adminUrl = getAdminUrl();
-    keyboard.webApp("Админ панель", adminUrl).row();
+    keyboard.webApp("Админ панель", adminUrl);
+    keyboard.row();
   }
 
   // Notifications toggle button — always show, default to disabled
@@ -132,11 +134,13 @@ async function buildMainKeyboard(settings: Awaited<ReturnType<typeof getBotSetti
     keyboard.callbackData(
       enabled ? "✅ Уведомления включены" : "❌ Уведомления выключены",
       `toggle_notifications_${userId}`
-    ).row();
+    );
+    keyboard.row();
   }
 
   if (settings.supportUsername) {
-    keyboard.url("Поддержка", `https://t.me/${settings.supportUsername}`).row();
+    keyboard.url("Поддержка", `https://t.me/${settings.supportUsername}`);
+    keyboard.row();
   }
 
   return keyboard;
