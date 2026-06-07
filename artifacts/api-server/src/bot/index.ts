@@ -122,16 +122,17 @@ async function buildMainKeyboard(settings: Awaited<ReturnType<typeof getBotSetti
     keyboard.webApp("Админ панель", adminUrl).row();
   }
 
-  // Notifications toggle button
+  // Notifications toggle button — always show, default to disabled
   if (userId) {
+    let enabled = false;
     try {
       const [user] = await db.select().from(usersTable).where(eq(usersTable.telegramUserId, String(userId)));
-      const enabled = user?.notificationsEnabled ?? false;
-      keyboard.callbackData(
-        enabled ? "✅ Уведомления включены" : "❌ Уведомления выключены",
-        `toggle_notifications_${userId}`
-      ).row();
+      enabled = user?.notificationsEnabled ?? false;
     } catch {}
+    keyboard.callbackData(
+      enabled ? "✅ Уведомления включены" : "❌ Уведомления выключены",
+      `toggle_notifications_${userId}`
+    ).row();
   }
 
   if (settings.supportUsername) {
@@ -152,21 +153,25 @@ export async function startBot() {
 
   bot.command("start", requireSubscription, async (ctx) => {
     if (ctx.from) {
-      await db.insert(usersTable).values({
-        telegramUserId: String(ctx.from.id),
-        username: ctx.from.username ?? null,
-        firstName: ctx.from.first_name ?? null,
-        lastName: ctx.from.last_name ?? null,
-        lastSeenAt: new Date(),
-      }).onConflictDoUpdate({
-        target: usersTable.telegramUserId,
-        set: {
+      try {
+        await db.insert(usersTable).values({
+          telegramUserId: String(ctx.from.id),
           username: ctx.from.username ?? null,
           firstName: ctx.from.first_name ?? null,
           lastName: ctx.from.last_name ?? null,
           lastSeenAt: new Date(),
-        },
-      });
+        }).onConflictDoUpdate({
+          target: usersTable.telegramUserId,
+          set: {
+            username: ctx.from.username ?? null,
+            firstName: ctx.from.first_name ?? null,
+            lastName: ctx.from.last_name ?? null,
+            lastSeenAt: new Date(),
+          },
+        });
+      } catch (err) {
+        logger.warn({ err }, "Failed to upsert user on /start");
+      }
     }
 
     const settings = await getBotSettings();
