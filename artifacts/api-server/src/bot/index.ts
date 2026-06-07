@@ -113,37 +113,35 @@ async function notifyAdmin(text: string) {
 
 async function buildMainKeyboard(settings: Awaited<ReturnType<typeof getBotSettings>>, userId?: number) {
   const shopUrl = getShopUrl();
-  const keyboard = new InlineKeyboard();
 
-  keyboard.webApp("Открыть магазин", shopUrl);
-  keyboard.row();
+  // Build rows array
+  const rows: any[] = [
+    [InlineKeyboard.webApp("Открыть магазин", shopUrl)],
+  ];
 
   if (await isAdmin(userId)) {
     const adminUrl = getAdminUrl();
-    keyboard.webApp("Админ панель", adminUrl);
-    keyboard.row();
+    rows.push([InlineKeyboard.webApp("Админ панель", adminUrl)]);
   }
 
-  // Notifications toggle button — always show, default to disabled
+  // Notifications toggle
   if (userId) {
     let enabled = false;
     try {
       const [user] = await db.select().from(usersTable).where(eq(usersTable.telegramUserId, String(userId)));
       enabled = user?.notificationsEnabled ?? false;
     } catch {}
-    keyboard.callbackData(
+    rows.push([InlineKeyboard.text(
       enabled ? "✅ Уведомления включены" : "❌ Уведомления выключены",
       `toggle_notifications_${userId}`
-    );
-    keyboard.row();
+    )]);
   }
 
   if (settings.supportUsername) {
-    keyboard.url("Поддержка", `https://t.me/${settings.supportUsername}`);
-    keyboard.row();
+    rows.push([InlineKeyboard.url("Поддержка", `https://t.me/${settings.supportUsername}`)]);
   }
 
-  return keyboard;
+  return InlineKeyboard.from(rows);
 }
 
 export async function startBot() {
