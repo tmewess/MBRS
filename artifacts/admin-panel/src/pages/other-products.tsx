@@ -249,7 +249,7 @@ export default function OtherProducts() {
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Выберите соцсеть" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper" className="max-h-[300px] overflow-y-auto">
                   {SOCIAL_NETWORKS.map(sn => (
                     <SelectItem key={sn.id} value={sn.id}>
                       <span className="flex items-center gap-2">

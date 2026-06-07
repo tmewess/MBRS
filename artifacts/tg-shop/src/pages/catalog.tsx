@@ -81,6 +81,11 @@ const COUNTRY_FLAGS: Record<string, string> = {
 };
 
 function getFlag(country: string): string {
+  if (!country) return "🌍";
+  // If country starts with an emoji flag (e.g. "🇰🇿 Казахстан"), extract it
+  const emojiMatch = country.match(/^(\p{Emoji_Presentation}+|\p{Extended_Pictographic}+)\s*/u);
+  if (emojiMatch) return emojiMatch[1];
+  // Otherwise look up by name
   return COUNTRY_FLAGS[country] || "🌍";
 }
 
@@ -327,17 +332,17 @@ export default function Catalog() {
                       <div className="flex items-start gap-3 flex-1 min-w-0">
                         {/* Country flag on the left */}
                         <span className="text-2xl leading-none mt-0.5 shrink-0">
-                          {COUNTRY_FLAGS[acc.country] || "🏳️"}
+                          {getFlag(acc.country)}
                         </span>
                         <div className="space-y-1.5 flex-1 min-w-0">
                           {/* Description top, country below */}
                           {acc.description ? (
                             <>
                               <div className="font-semibold text-sm truncate">{acc.description}</div>
-                              <div className="text-xs text-muted-foreground">{acc.country || "Другая"}</div>
+                              <div className="text-xs text-muted-foreground">{acc.country?.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}]+\s*/u, "") || "Другая"}</div>
                             </>
                           ) : (
-                            <div className="font-semibold text-sm">{acc.country || "Другая"}</div>
+                            <div className="font-semibold text-sm">{acc.country?.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}]+\s*/u, "") || "Другая"}</div>
                           )}
                           {/* Badges */}
                           <div className="flex items-center gap-1.5 flex-wrap">
